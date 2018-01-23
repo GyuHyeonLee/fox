@@ -14,20 +14,25 @@ struct orbit_total_system
 	// orbit 1
 	real32 r1;
 	real32 speed1;
-
 	planet_system planet1;
 
 	// orbit 2
 	real32 r2;
 	real32 speed2;
-
 	planet_system planet2;
 
 	// orbit 3
 	real32 r3;
 	real32 speed3;
-
 	planet_system planet3;
+};
+
+struct orbit_total_system
+{
+	v2 centerMass;
+
+	real32 center2Mass;
+	real32 speed2;
 };
 
 #endif

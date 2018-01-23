@@ -186,6 +186,11 @@ DEBUGLoadBMP(thread_context *thread, debug_platform_read_entire_file *readEntire
     return result;
 }
 
+struct add_low_entity_result
+{
+    uint32 lowIndex;
+    low_entity *lowEntity;
+}
 
 // By default, the align it by the center!
 internal loaded_bitmap
@@ -1120,7 +1125,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
             real32 groundSideInMeters = gameState->world->chunkDimInMeters.x;
             PushBitmap(renderGroup, bitmap, groundSideInMeters, V3(0, 0, 0));
-            // TODO : Delte this! This is for the debug!
+            // TODO : Delete this! This is for the debug!
             PushRectOutline(renderGroup, V3(0, 0, 0), V2(groundSideInMeters, groundSideInMeters), V4(1, 0, 0, 1));
         }
     }
