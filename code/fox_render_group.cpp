@@ -314,158 +314,166 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
         ++y)
     {
         uint32 *pixel = (uint32 *)row;
+
         for(int x = minX;
             x < maxX;
-            ++x)
+            x += 4)
         {
             BEGIN_TIMED_BLOCK(TestPixel);
             
-            v2 pixelPos = V2i(x, y);
-            // pixelPos based on the origin
-            v2 basePos = pixelPos - origin;
-
-            // Transform to the u-v coordinate system to get the bitmap based pixels!
-            // First of all, we need to divide the value with the legnth of the axis
-            // to make the axis unit length
-            // Second, we need to divdie with the length of the axis AGAIN
-            // because we need the coordinate to be matched to the normalized axis!
-            real32 u = Inner(basePos, nxAxis);
-            real32 v = Inner(basePos, nyAxis);
-
-            // We can test whether the pixel is inside the texture or not with this test
-            if((u >= 0.0f) && (u <= 1.0f) && 
-                (v >= 0.0f) && (v <= 1.0f))
+            for(int pIndex = 0;
+                pIndex < 4;
+                ++pIndex)
             {
-                BEGIN_TIMED_BLOCK(FillPixel);
+                v2 pixelPos = V2i(x, y);
+                // pixelPos based on the origin
+                v2 basePos = pixelPos - origin;
 
-                // TODO : Put this back to the original thing!
-                real32 texelX= ((u*(real32)(texture->width - 2)));
-                real32 texelY = ((v*(real32)(texture->height - 2)));
+                // Transform to the u-v coordinate system to get the bitmap based pixels!
+                // First of all, we need to divide the value with the legnth of the axis
+                // to make the axis unit length
+                // Second, we need to divdie with the length of the axis AGAIN
+                // because we need the coordinate to be matched to the normalized axis!
+                real32 u = Inner(basePos, nxAxis);
+                real32 v = Inner(basePos, nyAxis);
 
-                // What pixel should we use in the bitmap?
-                // NOTE : x and y in texture in integer value
-                int32 texelPixelX = (int32)(texelX);
-                int32 texelPixelY = (int32)(texelY);
+                // We can test whether the pixel is inside the texture or not with this test
+                if((u >= 0.0f) && (u <= 1.0f) && 
+                    (v >= 0.0f) && (v <= 1.0f))
+                {
+                    BEGIN_TIMED_BLOCK(FillPixel);
 
-                real32 fX = texelX - (real32)texelPixelX;
-                real32 fY = texelY - (real32)texelPixelY;
+                    // TODO : Put this back to the original thing!
+                    real32 texelX= ((u*(real32)(texture->width - 2)));
+                    real32 texelY = ((v*(real32)(texture->height - 2)));
 
-                // NOTE : Get(Sample) 4 texels around the target texel
-                uint8 *texelPtr = ((uint8 *)texture->memory + 
-                                    texelPixelX*sizeof(uint32) + 
-                                    texelPixelY*texture->pitch);
+                    // What pixel should we use in the bitmap?
+                    // NOTE : x and y in texture in integer value
+                    int32 texelPixelX = (int32)(texelX);
+                    int32 texelPixelY = (int32)(texelY);
 
-                // Get all 4 texels around the texelX and texelY
-                uint32 sampleA = *(uint32 *)(texelPtr);
-                uint32 sampleB = *(uint32 *)(texelPtr + sizeof(uint32));
-                uint32 sampleC = *(uint32 *)(texelPtr + texture->pitch);
-                uint32 sampleD = *(uint32 *)(texelPtr + texture->pitch + sizeof(uint32));
+                    real32 fX = texelX - (real32)texelPixelX;
+                    real32 fY = texelY - (real32)texelPixelY;
 
-                // NOTE : Unpack texels
-                real32 texelAr = (real32)((sampleA >> 16) & 0xFF);
-                real32 texelAg = (real32)((sampleA >> 8) & 0xFF);
-                real32 texelAb = (real32)((sampleA >> 0) & 0xFF);
-                real32 texelAa = (real32)((sampleA >> 24) & 0xFF);
+                    // NOTE : Get(Sample) 4 texels around the target texel
+                    uint8 *texelPtr = ((uint8 *)texture->memory + 
+                                        texelPixelX*sizeof(uint32) + 
+                                        texelPixelY*texture->pitch);
 
-                real32 texelBr = (real32)((sampleB >> 16) & 0xFF);
-                real32 texelBg = (real32)((sampleB >> 8) & 0xFF);
-                real32 texelBb = (real32)((sampleB >> 0) & 0xFF);
-                real32 texelBa = (real32)((sampleB >> 24) & 0xFF);
+                    // Get all 4 texels around the texelX and texelY
+                    uint32 sampleA = *(uint32 *)(texelPtr);
+                    uint32 sampleB = *(uint32 *)(texelPtr + sizeof(uint32));
+                    uint32 sampleC = *(uint32 *)(texelPtr + texture->pitch);
+                    uint32 sampleD = *(uint32 *)(texelPtr + texture->pitch + sizeof(uint32));
 
-                real32 texelCr = (real32)((sampleC >> 16) & 0xFF);
-                real32 texelCg = (real32)((sampleC >> 8) & 0xFF);
-                real32 texelCb = (real32)((sampleC >> 0) & 0xFF);
-                real32 texelCa = (real32)((sampleC >> 24) & 0xFF);
+                    // NOTE : Unpack texels
+                    real32 texelAr = (real32)((sampleA >> 16) & 0xFF);
+                    real32 texelAg = (real32)((sampleA >> 8) & 0xFF);
+                    real32 texelAb = (real32)((sampleA >> 0) & 0xFF);
+                    real32 texelAa = (real32)((sampleA >> 24) & 0xFF);
 
-                real32 texelDr = (real32)((sampleD >> 16) & 0xFF);
-                real32 texelDg = (real32)((sampleD >> 8) & 0xFF);
-                real32 texelDb = (real32)((sampleD >> 0) & 0xFF);
-                real32 texelDa = (real32)((sampleD >> 24) & 0xFF);
+                    real32 texelBr = (real32)((sampleB >> 16) & 0xFF);
+                    real32 texelBg = (real32)((sampleB >> 8) & 0xFF);
+                    real32 texelBb = (real32)((sampleB >> 0) & 0xFF);
+                    real32 texelBa = (real32)((sampleB >> 24) & 0xFF);
 
-                // NOTE : Convert pixels from 255 space to linear 1 space
-                texelAr = Square(inv255*texelAr);
-                texelAg = Square(inv255*texelAg);
-                texelAb = Square(inv255*texelAb);
-                texelAa = inv255*texelAa;
+                    real32 texelCr = (real32)((sampleC >> 16) & 0xFF);
+                    real32 texelCg = (real32)((sampleC >> 8) & 0xFF);
+                    real32 texelCb = (real32)((sampleC >> 0) & 0xFF);
+                    real32 texelCa = (real32)((sampleC >> 24) & 0xFF);
 
-                texelBr = Square(inv255*texelBr);
-                texelBg = Square(inv255*texelBg);
-                texelBb = Square(inv255*texelBb);
-                texelBa = inv255*texelBa;
-                
-                texelCr = Square(inv255*texelCr);
-                texelCg = Square(inv255*texelCg);
-                texelCb = Square(inv255*texelCb);
-                texelCa = inv255*texelCa;
+                    real32 texelDr = (real32)((sampleD >> 16) & 0xFF);
+                    real32 texelDg = (real32)((sampleD >> 8) & 0xFF);
+                    real32 texelDb = (real32)((sampleD >> 0) & 0xFF);
+                    real32 texelDa = (real32)((sampleD >> 24) & 0xFF);
 
-                texelDr = Square(inv255*texelDr);
-                texelDg = Square(inv255*texelDg);
-                texelDb = Square(inv255*texelDb);
-                texelDa = inv255*texelDa;
+                    // NOTE : Convert pixels from 255 space to linear 1 space
+                    texelAr = Square(inv255*texelAr);
+                    texelAg = Square(inv255*texelAg);
+                    texelAb = Square(inv255*texelAb);
+                    texelAa = inv255*texelAa;
 
-                // NOTE : Leap so that we can get 4 texels blended.
-                // Bilinear texture blend
-                real32 invfX = 1.0f - fX;
-                real32 invfY = 1.0f - fY;
+                    texelBr = Square(inv255*texelBr);
+                    texelBg = Square(inv255*texelBg);
+                    texelBb = Square(inv255*texelBb);
+                    texelBa = inv255*texelBa;
+                    
+                    texelCr = Square(inv255*texelCr);
+                    texelCg = Square(inv255*texelCg);
+                    texelCb = Square(inv255*texelCb);
+                    texelCa = inv255*texelCa;
 
-                real32 l0 = invfX*invfY;
-                real32 l1 = invfY*fX;
-                real32 l2 = fY*invfX;
-                real32 l3 = fY*fX;
+                    texelDr = Square(inv255*texelDr);
+                    texelDg = Square(inv255*texelDg);
+                    texelDb = Square(inv255*texelDb);
+                    texelDa = inv255*texelDa;
 
-                real32 texelr = l0*texelAr + l1*texelBr + l2*texelCr + l3*texelDr;
-                real32 texelg = l0*texelAg + l1*texelBg + l2*texelCg + l3*texelDg;
-                real32 texelb = l0*texelAb + l1*texelBb + l2*texelCb + l3*texelDb;
-                real32 texela = l0*texelAa + l1*texelBa + l2*texelCa + l3*texelDa;
+                    // NOTE : Leap so that we can get 4 texels blended.
+                    // Bilinear texture blend
+                    real32 invfX = 1.0f - fX;
+                    real32 invfY = 1.0f - fY;
 
-                // NOTE(casey): Modulate by incoming color
-                texelr = texelr*color.r;
-                texelg = texelg*color.g;
-                texelb = texelb*color.b;
-                texela = texela*color.a;
+                    real32 l0 = invfX*invfY;
+                    real32 l1 = invfY*fX;
+                    real32 l2 = fY*invfX;
+                    real32 l3 = fY*fX;
 
-                // NOTE : Clamp colors to valid range
-                texelr = Clamp01(texelr);
-                texelg = Clamp01(texelg);
-                texelb = Clamp01(texelb);
+                    real32 texelr = l0*texelAr + l1*texelBr + l2*texelCr + l3*texelDr;
+                    real32 texelg = l0*texelAg + l1*texelBg + l2*texelCg + l3*texelDg;
+                    real32 texelb = l0*texelAb + l1*texelBb + l2*texelCb + l3*texelDb;
+                    real32 texela = l0*texelAa + l1*texelBa + l2*texelCa + l3*texelDa;
 
-                // NOTE : Get the destination pixel from the buffer
-                real32 destr = (real32)((*pixel >> 16) & 0xFF);
-                real32 destg = (real32)((*pixel >> 8) & 0xFF);
-                real32 destb = (real32)((*pixel >> 0) & 0xFF);
-                real32 desta = (real32)((*pixel >> 24) & 0xFF);
+                    // NOTE(casey): Modulate by incoming color
+                    texelr = texelr*color.r;
+                    texelg = texelg*color.g;
+                    texelb = texelb*color.b;
+                    texela = texela*color.a;
 
-                // NOTE : RGB to linear 1 space
-                destr = Square(inv255*destr);
-                destg = Square(inv255*destg);
-                destb = Square(inv255*destb);
-                desta = inv255*desta;
+                    // NOTE : Clamp colors to valid range
+                    texelr = Clamp01(texelr);
+                    texelg = Clamp01(texelg);
+                    texelb = Clamp01(texelb);
 
-                // NOTE : Destination blend
-                real32 invTexelA = (1.0f - texela);
-                real32 blendedr = invTexelA*destr + texelr;
-                real32 blendedg = invTexelA*destg + texelg;
-                real32 blendedb = invTexelA*destb + texelb;
-                real32 blendeda = (texela + desta - texela*desta);
+                    // NOTE : Get the destination pixel from the buffer
+                    real32 destr = (real32)((*pixel >> 16) & 0xFF);
+                    real32 destg = (real32)((*pixel >> 8) & 0xFF);
+                    real32 destb = (real32)((*pixel >> 0) & 0xFF);
+                    real32 desta = (real32)((*pixel >> 24) & 0xFF);
 
-                // NOTE : RGB to linear 1 space
-                real32 resultr = one255*Root2(blendedr);
-                real32 resultg = one255*Root2(blendedg);
-                real32 resultb = one255*Root2(blendedb);
-                real32 resulta = one255*blendeda;
+                    // NOTE : RGB to linear 1 space
+                    destr = Square(inv255*destr);
+                    destg = Square(inv255*destg);
+                    destb = Square(inv255*destb);
+                    desta = inv255*desta;
 
-                // NOTE : Put it back as a, r, g, b order
-                *pixel = (((uint32)(resulta + 0.5f) << 24) |
-                        ((uint32)(resultr + 0.5f) << 16) |
-                        ((uint32)(resultg + 0.5f) << 8) |
-                        ((uint32)(resultb + 0.5f) << 0));
+                    // NOTE : Destination blend
+                    real32 invTexelA = (1.0f - texela);
+                    real32 blendedr = invTexelA*destr + texelr;
+                    real32 blendedg = invTexelA*destg + texelg;
+                    real32 blendedb = invTexelA*destb + texelb;
+                    real32 blendeda = (texela + desta - texela*desta);
 
-                END_TIMED_BLOCK(FillPixel);
+                    // NOTE : RGB to linear 1 space
+                    real32 resultr = one255*Root2(blendedr);
+                    real32 resultg = one255*Root2(blendedg);
+                    real32 resultb = one255*Root2(blendedb);
+                    real32 resulta = one255*blendeda;
+
+                    // NOTE : Put it back as a, r, g, b order
+                    *pixel = (((uint32)(resulta + 0.5f) << 24) |
+                            ((uint32)(resultr + 0.5f) << 16) |
+                            ((uint32)(resultg + 0.5f) << 8) |
+                            ((uint32)(resultb + 0.5f) << 0));
+
+                    pixel++;
+                    END_TIMED_BLOCK(FillPixel);
+                }
             }
 
             // We could not use *pixel++ as we did because
             // we are performing some tests against pixels!
-            pixel++;
+
+            // pixel += 4;
 
             END_TIMED_BLOCK(TestPixel);
         }

@@ -5,9 +5,8 @@
 #include "fox_sim_region.h"
 #include "fox_entity.h"
 #include "fox_world.cpp"
-#include "fox_orbit.h"
 
-// #include "fox_entity.cpp"
+// #include "fox_etity.cpp"
 #include "fox_sim_region.cpp"
 
 namespace
@@ -184,12 +183,6 @@ DEBUGLoadBMP(thread_context *thread, debug_platform_read_entire_file *readEntire
     result.memory = (uint8 *)result.memory - result.pitch*(result.height - 1);
 #endif
     return result;
-}
-
-struct add_low_entity_result
-{
-    uint32 lowIndex;
-    low_entity *lowEntity;
 }
 
 // By default, the align it by the center!
@@ -663,7 +656,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
         // TODO : Talk about this soon!  Let's start partitioning our memory space!
         InitializeArena(&gameState->worldArena, 
-                        memory->permanentStorageSize - sizeof(game_state),
+                        (memory_index)(memory->permanentStorageSize - sizeof(game_state)),
                         (uint8 *)memory->permanentStorage + sizeof(game_state));
 
         gameState->world = PushStruct(&gameState->worldArena, world);
@@ -955,7 +948,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     if(!tranState->isInitialized)
     {
         InitializeArena(&tranState->tranArena, 
-                        memory->transientStorageSize - sizeof(transient_state),
+                        (memory_index)(memory->transientStorageSize - sizeof(transient_state)),
                         (uint8 *)memory->transientStorage + sizeof(transient_state));                
 
         tranState->groundBufferCount = 64;
@@ -1228,20 +1221,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
     v3 cameraPos = SubstractTwoWMP(gameState->world, &gameState->cameraPos, &simCenterPos);
     
-    // Orbit
-    planet_system *planet = &gameState->totalSystem.planet1;
-    gameState->totalSystem.center = {0, 0};
-    gameState->totalSystem.r1 = 1.0f;
-    gameState->totalSystem.speed1 = 0.1f;
-    planet->size = V2(0.5f, 0.5f);
-
-    planet->angle += gameState->totalSystem.speed1;
-    v2 planetCoord = gameState->totalSystem.center +
-                        V2(gameState->totalSystem.r1 * Cos(planet->angle), 
-                        gameState->totalSystem.r1 * Sin(planet->angle));
-
-    PushRect(renderGroup, V3(planetCoord, 0.0f), planet->size, V4(1.0f, 0.0f, 0.0f, 0.0f));
-
     for(uint32 entityIndex = 0;
         entityIndex < simRegion->entityCount;
         ++entityIndex)

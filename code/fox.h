@@ -145,7 +145,6 @@ ZeroSize(memory_index size, void *ptr)
 #include "fox_world.h"
 #include "fox_sim_region.h"
 #include "fox_render_group.h"
-#include "fox_orbit.h"
 
 // This entity is being updated in low frequency(enemy that is far away from the player)    
 // TODO : This is getting really huge. need to do something!
@@ -240,8 +239,6 @@ struct game_state
     loaded_bitmap diff;
     loaded_bitmap diffNormal;
 
-    // orbit prototype
-    orbit_total_system totalSystem;
 };
 
 struct transient_state

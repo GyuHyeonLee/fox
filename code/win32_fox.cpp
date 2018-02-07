@@ -814,14 +814,14 @@ CatStrings(char *sourceA, size_t sourceACount,
             char *sourceB, size_t sourceBCount,
             char *dest, size_t destCount)
 {
-    for(int index = 0;
+    for(size_t index = 0;
         index < sourceACount;
         ++index)
     {
         *dest++ = *sourceA++;
     }
 
-    for(int index = 0;
+    for(size_t index = 0;
         index < sourceBCount;
         ++index)
     {
