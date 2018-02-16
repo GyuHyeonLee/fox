@@ -256,8 +256,11 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
     v2 nxAxis = invXAxisSquare*xAxis;
     v2 nyAxis = invYAxisSquare*yAxis;
 
-    int32 widthMax = buffer->width - 1;
-    int32 heightMax = buffer->height - 1;
+	// TODO : IMPORTANT : This should be stopped! 
+	// because we are incrementing x by 4 and using the pIndex to get all the pixels
+	// for preventing the buffer overflow!
+    int32 widthMax = buffer->width - 1 - 4;
+    int32 heightMax = buffer->height - 1 - 4;
 
     // NOTE : because the input value is in 255 space,
     // convert it to be in linear 1 space
@@ -296,13 +299,13 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
     {
         minY = 0;
     }
-    if(maxX > buffer->width)
+    if(maxX > widthMax)
     {
-        maxX = buffer->width;
+    	maxX = widthMax;
     }
-    if(maxY > buffer->height)
+    if(maxY > heightMax)
     {
-        maxY = buffer->height;
+        maxY = heightMax;
     }
 
     uint8 *row = ((uint8 *)buffer->memory +
@@ -316,7 +319,7 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
         uint32 *pixel = (uint32 *)row;
 
         for(int x = minX;
-            x < maxX;
+            x <= maxX;
             x += 4)
         {
             BEGIN_TIMED_BLOCK(TestPixel);
@@ -325,8 +328,10 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
                 pIndex < 4;
                 ++pIndex)
             {
-                v2 pixelPos = V2i(x, y);
-                // pixelPos based on the origin
+            	int32 xIndex = x + pIndex;
+                v2 pixelPos = V2i(xIndex, y);
+
+                // pixelPos based on the ukrigin
                 v2 basePos = pixelPos - origin;
 
                 // Transform to the u-v coordinate system to get the bitmap based pixels!
@@ -465,15 +470,14 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
                             ((uint32)(resultg + 0.5f) << 8) |
                             ((uint32)(resultb + 0.5f) << 0));
 
-                    pixel++;
+                   	pixel++;
+
                     END_TIMED_BLOCK(FillPixel);
                 }
             }
 
             // We could not use *pixel++ as we did because
             // we are performing some tests against pixels!
-
-            // pixel += 4;
 
             END_TIMED_BLOCK(TestPixel);
         }
@@ -511,8 +515,8 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
     // that the normals appear to have.
     real32 nzScale = 0.5f*(xAxisLength + yAxisLength);
 
-    int32 widthMax = buffer->width - 1;
-    int32 heightMax = buffer->height - 1;
+	 int32 widthMax = buffer->width - 1 - 100;
+    int32 heightMax = buffer->height - 1 - 100;
 
     // TODO : This will need to be specified separately!!
     real32 originZ = 0.0f;

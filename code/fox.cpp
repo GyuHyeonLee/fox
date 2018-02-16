@@ -1217,7 +1217,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     render_basis *debugBasis = PushStruct(&tranState->tranArena, render_basis);
     debugBasis->pos = V3(0, 0, 0);
     renderGroup->defaultBasis = debugBasis;
-    PushRectOutline(renderGroup, V3(0, 0, 0), GetDim(screenBound), V4(1.0f, 0.7f, 0.0f, 1.0f));
+    // PushRectOutline(renderGroup, V3(0, 0, 0), GetDim(screenBound), V4(1.0f, 0.7f, 0.0f, 1.0f));
 
     v3 cameraPos = SubstractTwoWMP(gameState->world, &gameState->cameraPos, &simCenterPos);
     

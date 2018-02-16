@@ -29,7 +29,7 @@ REM cl: command line
 REM -Fm: Create map file. Map file shows the whole process.
 REM -opt:ref: Hey linker don't put something into the exe if noone is using it.
 
-set commonCompilerFlags= -MTd -nologo -Gm- -GR- -EHa- -O2 -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4127 -DFOX_WIN32=1 -DFOX_SLOW=1 -DFOX_DEBUG=1 -FC -Z7
+set commonCompilerFlags= -MTd -nologo -Gm- -GR- -EHa- -Od -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4127 -DFOX_WIN32=1 -DFOX_SLOW=1 -DFOX_DEBUG=1 -FC -Z7
 set commonLinkerFlags= -incremental:no -opt:ref user32.lib gdi32.lib winmm.lib
 
 IF NOT EXIST ..\..\build mkdir ..\..\build

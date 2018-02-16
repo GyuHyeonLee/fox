@@ -49,8 +49,8 @@ inline bool32
 AreInSameChunk(world *world_, world_position *pos1, world_position *pos2)
 {
     // These positions should had been canonicalized before coming here!
-    Assert(IsCanonical(world_, pos1->offset_));
-    Assert(IsCanonical(world_, pos2->offset_));
+    //Assert(IsCanonical(world_, pos1->offset_));
+    //Assert(IsCanonical(world_, pos2->offset_));
 
     bool32 isSame = (pos1->chunkX == pos2->chunkX) &&
                     (pos1->chunkY == pos2->chunkY) &&
