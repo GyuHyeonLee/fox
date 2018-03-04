@@ -117,12 +117,12 @@ typedef DEBUG_PLATFORM_WRTIE_ENTIRE_FILE(debug_platform_write_entire_file);
 
 enum
 {
-    DebugCycleCounter_GameUpdateAndRender,
-    DebugCycleCounter_RenderGroupToOutputBuffer,
-    DebugCycleCounter_DrawSomethingSlowly,
-    DebugCycleCounter_DrawSomethingHopefullyFast,
-    DebugCycleCounter_TestPixel,
-    DebugCycleCounter_FillPixel,
+    /* 0 */ DebugCycleCounter_GameUpdateAndRender,
+   	/* 1 */ DebugCycleCounter_RenderGroupToOutputBuffer,
+    /* 2 */ DebugCycleCounter_DrawSomethingSlowly,
+    /* 3 */ DebugCycleCounter_DrawSomethingHopefullyFast,
+    /* 4 */ DebugCycleCounter_ProcessPixel,
+    /* 5 */ DebugCycleCounter_FillPixel,
     // This DebugCycleCounter_Count indicates how many elements should be in the counter array
     // because this value is always all the Cycle Counter we need + 1!!
     DebugCycleCounter_Count,
@@ -149,9 +149,11 @@ extern game_memory *debugGlobalMemory;
     #define BEGIN_TIMED_BLOCK(ID) uint64 startCycleCount##ID = __rdtsc();
     // We are += it because the same counter can be called in the same place multiple times, and we want the TOTAL counter
     #define END_TIMED_BLOCK(ID) debugGlobalMemory->counters[DebugCycleCounter_##ID].cycleCount += __rdtsc() - startCycleCount##ID; debugGlobalMemory->counters[DebugCycleCounter_##ID].hitCount++;
+    #define END_TIMED_BLOCK_COUNTED(ID, counter) debugGlobalMemory->counters[DebugCycleCounter_##ID].cycleCount += __rdtsc() - startCycleCount##ID; debugGlobalMemory->counters[DebugCycleCounter_##ID].hitCount += counter;
 #else
     #define BEGIN_TIMED_BLOCK(ID)
     #define END_TIMED_BLOCK(ID)
+    #define END_TIMED_BLOCK_COUNTED(ID)
 #endif
 
 #endif

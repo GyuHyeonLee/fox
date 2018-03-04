@@ -265,6 +265,7 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
     // NOTE : because the input value is in 255 space,
     // convert it to be in linear 1 space
     real32 inv255 = 1.0f/255.0f;
+    __m128 inv255m = _mm_set1_ps(inv255);
     real32 one255 = 255.0f;
 
     // Setting these to as low or high as they can so that we can modify
@@ -315,21 +316,20 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
                             minX * BITMAP_BYTES_PER_PIXEL +
                             minY * buffer->pitch);
 
+	BEGIN_TIMED_BLOCK(ProcessPixel);
     for(int y = minY;
         y <= maxY;
         ++y)
     {
         uint32 *pixel = (uint32 *)row;
 
-        for(int x = minX;
-            x <= maxX;
-            x += 4)
+        for(int xi = minX;
+            xi <= maxX;
+            xi += 4)
         {
-            BEGIN_TIMED_BLOCK(TestPixel);
-            
             // Pre store the variables so that we can use them in 
             // mulitple loops!
-           	real32 texelAr[4];
+            __m128 texelAr = _mm_set1_ps(0.0f);
            	real32 texelAg[4];
            	real32 texelAb[4];
            	real32 texelAa[4];
@@ -363,12 +363,12 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
            	real32 blendeda[4];
             
             bool32 shouldFill[4];
+
             for(int i = 0;
                 i < 4;
                 ++i)
             {
-            	int32 xIndex = x + i;
-                v2 pixelPos = V2i(xIndex, y);
+                v2 pixelPos = V2i(xi + i, y);
 
                 // pixelPos based on the ukrigin
                 v2 basePos = pixelPos - origin;
@@ -409,11 +409,10 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
                     uint32 sampleB = *(uint32 *)(texelPtr + sizeof(uint32));
                     uint32 sampleC = *(uint32 *)(texelPtr + texture->pitch);
                     uint32 sampleD = *(uint32 *)(texelPtr + texture->pitch + sizeof(uint32));
-
 					
                     // NOTE : Unpack texels
                     // We are unpacking 4 texels so that we can blend those 4!
-                    texelAr[i] = (real32)((sampleA >> 16) & 0xFF);
+                   	((float *)&texelAr)[i] = (real32)((sampleA >> 16) & 0xFF);
                     texelAg[i] = (real32)((sampleA >> 8) & 0xFF);
                     texelAb[i] = (real32)((sampleA >> 0) & 0xFF);
                     texelAa[i] = (real32)((sampleA >> 24) & 0xFF);
@@ -434,20 +433,20 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
                     texelDa[i] = (real32)((sampleD >> 24) & 0xFF);
 
                     // NOTE : Get the destination pixel from the buffer
-                    destr[i] = (real32)((*pixel >> 16) & 0xFF);
-                    destg[i] = (real32)((*pixel >> 8) & 0xFF);
-                    destb[i] = (real32)((*pixel >> 0) & 0xFF);
-                    desta[i] = (real32)((*pixel >> 24) & 0xFF);
+                    destr[i] = (real32)((*(pixel + i) >> 16) & 0xFF);
+                    destg[i] = (real32)((*(pixel + i) >> 8) & 0xFF);
+                    destb[i] = (real32)((*(pixel + i) >> 0) & 0xFF);
+                    desta[i] = (real32)((*(pixel + i) >> 24) & 0xFF);
 				}
 			}
 			
+			texelAr = _mm_mul_ps(inv255m, texelAr);
+			texelAr = _mm_mul_ps(texelAr, texelAr);
             for(int i = 0;
                 i < 4;
                 ++i)
             {
-
                     // NOTE : Convert pixels from 255 space to linear 1 space
-                    texelAr[i] = Square(inv255*texelAr[i]);
                     texelAg[i] = Square(inv255*texelAg[i]);
                     texelAb[i] = Square(inv255*texelAb[i]);
                     texelAa[i] = inv255*texelAa[i];
@@ -477,7 +476,7 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
                     real32 l2 = fY[i]*invfX;
                     real32 l3 = fY[i]*fX[i];
 
-                    real32 texelr = l0*texelAr[i] + l1*texelBr[i] + l2*texelCr[i] + l3*texelDr[i];
+                    real32 texelr = l0*((float *)&texelAr)[i] + l1*texelBr[i] + l2*texelCr[i] + l3*texelDr[i];
                     real32 texelg = l0*texelAg[i] + l1*texelBg[i] + l2*texelCg[i] + l3*texelDg[i];
                     real32 texelb = l0*texelAb[i] + l1*texelBb[i] + l2*texelCb[i] + l3*texelDb[i];
                     real32 texela = l0*texelAa[i] + l1*texelBa[i] + l2*texelCa[i] + l3*texelDa[i];
@@ -521,24 +520,24 @@ DrawSomethingHopefullyFast(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis,
             	if(shouldFill[i])
             	{
                     // NOTE : Put it back as a, r, g, b order
-                    *pixel = (((uint32)(blendeda[i] + 0.5f) << 24) |
-                            ((uint32)(blendedr[i] + 0.5f) << 16) |
-                            ((uint32)(blendedg[i] + 0.5f) << 8) |
-                            ((uint32)(blendedb[i] + 0.5f) << 0));
-
-                   	pixel++;
+                    *(pixel + i) = (((uint32)(blendeda[i] + 0.5f) << 24) |
+								((uint32)(blendedr[i] + 0.5f) << 16) |
+								((uint32)(blendedg[i] + 0.5f) << 8) |
+								((uint32)(blendedb[i] + 0.5f) << 0));
                 }
             }
 
             // We could not use *pixel++ as we did because
             // we are performing some tests against pixels!
+			pixel += 4;
 
-            END_TIMED_BLOCK(TestPixel);
         }
 
         row += buffer->pitch;
     }
 
+	END_TIMED_BLOCK_COUNTED(ProcessPixel, (maxX - minX + 1) * (maxY - minY + 1));
+	
     END_TIMED_BLOCK(DrawSomethingHopefullyFast);
 }
 
