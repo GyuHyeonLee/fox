@@ -1,2 +1,2 @@
 # no .bat files
-shell.bat
+*.bat
