@@ -382,6 +382,7 @@ Unpack4x8(uint32 packed)
             
             bool32 shouldFill[4];
 
+            // For now, we are going 4 for each x OUTSIDE the loop, so we have to manually put the values!
             __m128 pixelPosx =
                 _mm_set_ps((real32)(xi + 3), 
                 (real32)(xi + 2),
