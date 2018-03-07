@@ -1,5 +1,5 @@
 # no .bat files
-*.bat
+shells.bat
 
 # but build.bat is special!
 !build.bat
