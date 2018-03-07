@@ -124,13 +124,13 @@ Unpack4x8(uint32 packed)
 
         loaded_bitmap *lod = &map->lod[lodIndex];
 
-    // NOTE  Compute the distance to the map and the scaling
-    // factor for meters to UVs
+        // NOTE  Compute the distance to the map and the scaling
+        // factor for meters to UVs
         real32 uvsPerMeter = 0.01f;
         real32 c = (uvsPerMeter*distanceFromMapInZ) / sampleDirection.y;
         v2 offset = c * V2(sampleDirection.x, sampleDirection.z);
 
-    // NOTE : Find the intersection point
+        // NOTE : Find the intersection point
         v2 uv = screenSpaceUV + offset;
 
         uv.x = Clamp01(uv.x);
@@ -225,7 +225,7 @@ Unpack4x8(uint32 packed)
 
     // Left
         DrawRectangle(buffer, realMin, realMin + V2(thickness, height), color);
-    // Right
+        // Right
         DrawRectangle(buffer, realMax - V2(thickness, height), realMax, color);
     // Top
         DrawRectangle(buffer, realMin, realMin + V2(width, thickness), color);
@@ -528,6 +528,22 @@ Unpack4x8(uint32 packed)
             blendedb = _mm_mul_ps(one255_4x, _mm_sqrt_ps(blendedb));
             blendeda = _mm_mul_ps(one255_4x, blendeda);
 
+            #if 1
+            uint32 rs[] = {0x50505050, 0x51515151, 0x52525252, 0x53535353};
+            uint32 gs[] = {0x40404040, 0x41414141, 0x42424242, 0x43434343};
+            uint32 bs[] = {0x30303030, 0x31313131, 0x32323232, 0x33333333};
+            uint32 as[] = {0x20202020, 0x21212121, 0x22222222, 0x23232323};
+
+            blendedr = *(__m128 *)rs;
+            blendedg = *(__m128 *)gs;
+            blendedb = *(__m128 *)bs;
+            blendeda = *(__m128 *)as;
+
+            // NOTE : IMPORTANT : These are in named in register orders!
+            // However, if you see this inside the debugger, it will be shown differently 
+            // because it will be shown in c style array.
+            __m128i r1b1r0b0 = _mm_unpacklo_epi32(_mm_castps_si128(blendedb), _mm_castps_si128(blendedr));
+            #endif
             for(int i = 0;
                 i < 4;
                 ++i)
