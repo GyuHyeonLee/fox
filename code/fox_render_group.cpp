@@ -275,6 +275,10 @@ Unpack4x8(uint32 packed)
         __m128 zero_4x = _mm_set1_ps(0.0f);
         real32 inv255 = 1.0f/one255;
         __m128 inv255_4x = _mm_set1_ps(inv255);
+        __m128 nxAxisx_4x = _mm_set1_ps(nxAxis.x);
+        __m128 nxAxisy_4x = _mm_set1_ps(nxAxis.y);
+        __m128 nyAxisx_4x = _mm_set1_ps(nyAxis.x);
+        __m128 nyAxisy_4x = _mm_set1_ps(nyAxis.y);
 
     // Setting these to as low or high as they can so that we can modify
         int minX = widthMax;
@@ -313,10 +317,10 @@ Unpack4x8(uint32 packed)
 // and the heightMax because we are doing some hackish things above.
         if(maxX > widthMax)
         {
-           maxX = widthMax;
-       }
-       if(maxY > heightMax)
-       {
+         maxX = widthMax;
+     }
+     if(maxY > heightMax)
+     {
         maxY = heightMax;
     }
 
@@ -378,32 +382,35 @@ Unpack4x8(uint32 packed)
             
             bool32 shouldFill[4];
 
+            __m128 pixelPosx =
+                _mm_set_ps((real32)(xi + 3), 
+                (real32)(xi + 2),
+                (real32)(xi + 1),
+                (real32)(xi + 0));
+            __m128 pixelPosy = _mm_set1_ps((real32)(y));
+
+            __m128 originx_4x = _mm_set1_ps(origin.x);
+            __m128 originy_4x = _mm_set1_ps(origin.y);
+
+            __m128 basePosx_4x = _mm_sub_ps(pixelPosx, originx_4x);
+            __m128 basePosy_4x = _mm_sub_ps(pixelPosy, originy_4x);
+
+            __m128 u = _mm_add_ps(_mm_mul_ps(basePosx_4x, nxAxisx_4x), _mm_mul_ps(basePosy_4x, nxAxisy_4x));
+            __m128 v = _mm_add_ps(_mm_mul_ps(basePosx_4x, nyAxisx_4x), _mm_mul_ps(basePosy_4x, nyAxisy_4x));
+
             for(int i = 0;
                 i < 4;
                 ++i)
             {
-                v2 pixelPos = V2i(xi + i, y);
-
-                // pixelPos based on the ukrigin
-                v2 basePos = pixelPos - origin;
-
-                // Transform to the u-v coordinate system to get the bitmap based pixels!
-                // First of all, we need to divide the value with the legnth of the axis
-                // to make the axis unit length
-                // Second, we need to divdie with the length of the axis AGAIN
-                // because we need the coordinate to be matched to the normalized axis!
-                real32 u = Inner(basePos, nxAxis);
-                real32 v = Inner(basePos, nyAxis);
-
-                shouldFill[i] = ((u >= 0.0f) && (u <= 1.0f) && 
-                    (v >= 0.0f) && (v <= 1.0f));
+                shouldFill[i] = ((GetValue(u, i) >= 0.0f) && (GetValue(u, i) <= 1.0f) && 
+                    (GetValue(v, i) >= 0.0f) && (GetValue(v, i) <= 1.0f));
 
                 // We can test whether the pixel is inside the texture or not with this test
                 if(shouldFill[i])
                 {
                     // TODO : Put this back to the original thing!
-                    real32 texelX= ((u*(real32)(texture->width - 2)));
-                    real32 texelY = ((v*(real32)(texture->height - 2)));
+                    real32 texelX= ((GetValue(u, i)*(real32)(texture->width - 2)));
+                    real32 texelY = ((GetValue(v, i)*(real32)(texture->height - 2)));
 
                     // What pixel should we use in the bitmap?
                     // NOTE : x and y in texture in integer value
@@ -495,17 +502,10 @@ Unpack4x8(uint32 packed)
             texelb = _mm_mul_ps(texelb, colorb_4x);
             texela = _mm_mul_ps(texela, colora_4x);
 
-            for(int i = 0;
-                i < 4;
-                ++i)
-            {
-                // NOTE : Clamp colors to valid range
-                // TODO : Clamp can be done in SIMD space, so leave this for now.
-                GetValue(texelr, i) = Clamp01(GetValue(texelr, i));
-                GetValue(texelg, i) = Clamp01(GetValue(texelg, i));
-                GetValue(texelb, i) = Clamp01(GetValue(texelb, i));
-
-            }
+            // NOTE : Clamp colors to valid range using simd
+            texelr = _mm_min_ps(_mm_max_ps(texelr, zero_4x), one_4x);
+            texelg = _mm_min_ps(_mm_max_ps(texelg, zero_4x), one_4x);
+            texelb = _mm_min_ps(_mm_max_ps(texelb, zero_4x), one_4x);
 
             // NOTE : RGB to linear 1 space
             destr = mmSquare(_mm_mul_ps(inv255_4x, destr));
@@ -535,9 +535,9 @@ Unpack4x8(uint32 packed)
             	{
                     // NOTE : Put it back as a, r, g, b order
                     *(pixel + i) = (((uint32)(GetValue(blendeda, i) + 0.5f) << 24) |
-                                ((uint32)(GetValue(blendedr, i) + 0.5f) << 16) |
-                                ((uint32)(GetValue(blendedg, i) + 0.5f) << 8) |
-                                ((uint32)(GetValue(blendedb, i) + 0.5f) << 0));
+                        ((uint32)(GetValue(blendedr, i) + 0.5f) << 16) |
+                        ((uint32)(GetValue(blendedg, i) + 0.5f) << 8) |
+                        ((uint32)(GetValue(blendedb, i) + 0.5f) << 0));
                 }
             }
 

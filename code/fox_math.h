@@ -270,6 +270,8 @@ Lerp(real32 a, real32 t, real32 b)
     return result;
 }
 
+// NOTE : clamp means putting certain value to be a value
+// between two values. 
 inline real32
 Clamp(real32 min, real32 value, real32 max)
 {
