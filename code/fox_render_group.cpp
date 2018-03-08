@@ -528,8 +528,23 @@ Unpack4x8(uint32 packed)
             blendedb = _mm_mul_ps(one255_4x, _mm_sqrt_ps(blendedb));
             blendeda = _mm_mul_ps(one255_4x, blendeda);
 
+#if 0
+            // NOTE : This is another way to put a, r, g, b into proper order
+            // NOTE : IMPORTANT : These are in named in register(memory) orders!
+            // However, if you see this inside the debugger, it will be shown differently 
+            // because it will be shown in c style array.
+            __m128i r1b1r0b0 = _mm_unpacklo_epi32(_mm_castps_si128(blendedb), _mm_castps_si128(blendedr));
+            __m128i a1g1a0g0 = _mm_unpacklo_epi32(_mm_castps_si128(blendedg), _mm_castps_si128(blendeda));
+            __m128i r3b3r2b2 = _mm_unpackhi_epi32(_mm_castps_si128(blendedb), _mm_castps_si128(blendedr));
+            __m128i a3g3a2g2 = _mm_unpackhi_epi32(_mm_castps_si128(blendedg), _mm_castps_si128(blendeda));
+
+            __m128i argb0 = _mm_unpacklo_epi32(r1b1r0b0, a1g1a0g0); 
+            __m128i argb1 = _mm_unpackhi_epi32(r1b1r0b0, a1g1a0g0); 
+            __m128i argb2 = _mm_unpacklo_epi32(r3b3r2b2, a3g3a2g2); 
+            __m128i argb3 = _mm_unpackhi_epi32(r3b3r2b2, a3g3a2g2); 
+#endif
             // NOTE : Converct packed single precision 32bit floating value
-            // into 
+            // into 32bit integer value
             __m128i intr = _mm_cvtps_epi32(blendedr);
             __m128i intg = _mm_cvtps_epi32(blendedg);
             __m128i intb = _mm_cvtps_epi32(blendedb);
@@ -544,27 +559,15 @@ Unpack4x8(uint32 packed)
             // __m128i dest = _mm_or_si128(_mm_or_si128(sr, sg), _mm_or_si128(sb, sa));
             __m128i dest = _mm_or_si128(_mm_or_si128(_mm_or_si128(sr, sg), sb), sa);
 
-            *(__m128i *)pixel = dest;  
+            // NOTE : because pixel may be not be 16 bit aligned and it is normally 8bit aligned 
+            // because each r, g, b, and a value is 8 bit value, it will not allow us to put 16bit aligned
+            // memory to the pixel pointer
+            // therefore, we should tell the compiler that it's okay not to be aligned.
+            _mm_storeu_si128((__m128i *)pixel, dest);
             
             // We could not use *pixel++ as we did because
             // we are performing some tests against pixels!
             pixel += 4;
-#if 0
-            // NOTE : IMPORTANT : These are in named in register(memory) orders!
-            // However, if you see this inside the debugger, it will be shown differently 
-            // because it will be shown in c style array.
-            __m128i r1b1r0b0 = _mm_unpacklo_epi32(_mm_castps_si128(blendedb), _mm_castps_si128(blendedr));
-            __m128i a1g1a0g0 = _mm_unpacklo_epi32(_mm_castps_si128(blendedg), _mm_castps_si128(blendeda));
-            __m128i r3b3r2b2 = _mm_unpackhi_epi32(_mm_castps_si128(blendedb), _mm_castps_si128(blendedr));
-            __m128i a3g3a2g2 = _mm_unpackhi_epi32(_mm_castps_si128(blendedg), _mm_castps_si128(blendeda));
-
-            __m128i argb0 = _mm_unpacklo_epi32(r1b1r0b0, a1g1a0g0); 
-            __m128i argb1 = _mm_unpackhi_epi32(r1b1r0b0, a1g1a0g0); 
-            __m128i argb2 = _mm_unpacklo_epi32(r3b3r2b2, a3g3a2g2); 
-            __m128i argb3 = _mm_unpackhi_epi32(r3b3r2b2, a3g3a2g2); 
-#endif
-
-
         }
 
         row += buffer->pitch;
