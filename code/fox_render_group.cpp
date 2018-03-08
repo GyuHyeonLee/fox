@@ -528,6 +528,28 @@ Unpack4x8(uint32 packed)
             blendedb = _mm_mul_ps(one255_4x, _mm_sqrt_ps(blendedb));
             blendeda = _mm_mul_ps(one255_4x, blendeda);
 
+            // NOTE : Converct packed single precision 32bit floating value
+            // into 
+            __m128i intr = _mm_cvtps_epi32(blendedr);
+            __m128i intg = _mm_cvtps_epi32(blendedg);
+            __m128i intb = _mm_cvtps_epi32(blendedb);
+            __m128i inta = _mm_cvtps_epi32(blendeda);
+
+            // Moved source r, g, b, a values
+            __m128i sr = _mm_slli_epi32(intr, 16);
+            __m128i sg = _mm_slli_epi32(intg, 8);
+            __m128i sb = _mm_slli_epi32(intb, 0);
+            __m128i sa = _mm_slli_epi32(inta, 24);
+
+            // __m128i dest = _mm_or_si128(_mm_or_si128(sr, sg), _mm_or_si128(sb, sa));
+            __m128i dest = _mm_or_si128(_mm_or_si128(_mm_or_si128(sr, sg), sb), sa);
+
+            *(__m128i *)pixel = dest;  
+            
+            // We could not use *pixel++ as we did because
+            // we are performing some tests against pixels!
+            pixel += 4;
+#if 0
             // NOTE : IMPORTANT : These are in named in register(memory) orders!
             // However, if you see this inside the debugger, it will be shown differently 
             // because it will be shown in c style array.
@@ -540,26 +562,8 @@ Unpack4x8(uint32 packed)
             __m128i argb1 = _mm_unpackhi_epi32(r1b1r0b0, a1g1a0g0); 
             __m128i argb2 = _mm_unpacklo_epi32(r3b3r2b2, a3g3a2g2); 
             __m128i argb3 = _mm_unpackhi_epi32(r3b3r2b2, a3g3a2g2); 
+#endif
 
-            // NOTE : Change these float values to integer values
-
-            for(int i = 0;
-                i < 4;
-                ++i)
-            {
-            	if(shouldFill[i])
-            	{
-                    // NOTE : Put it back as a, r, g, b order
-                    *(pixel + i) = (((uint32)(GetValue(blendeda, i) + 0.5f) << 24) |
-                        ((uint32)(GetValue(blendedr, i) + 0.5f) << 16) |
-                        ((uint32)(GetValue(blendedg, i) + 0.5f) << 8) |
-                        ((uint32)(GetValue(blendedb, i) + 0.5f) << 0));
-                }
-            }
-
-            // We could not use *pixel++ as we did because
-            // we are performing some tests against pixels!
-            pixel += 4;
 
         }
 
