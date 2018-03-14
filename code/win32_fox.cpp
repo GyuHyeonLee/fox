@@ -336,7 +336,7 @@ Win32InitDSound(HWND hWnd, int32 samplesPerSec, int32 secondaryBufferSize)
                 //Function SetCooperativeLevel() failed.
             }
 
-            //Create Secondary Buffer.
+            //Create Secondary buffer.
             DSBUFFERDESC bufferDesc = {};
             bufferDesc.dwSize = sizeof(bufferDesc);
             bufferDesc.dwFlags = DSBCAPS_GETCURRENTPOSITION2;
@@ -1189,6 +1189,7 @@ WinMain(HINSTANCE hInstance,
                     gameBuffer.pitch = globalBackBuffer.pitch;
                     gameBuffer.bytesPerPixel = 4;
                     
+                    // Get the update and render function so that we can update the game
                     if(gameCode.updateAndRender)
                     {
                         gameCode.updateAndRender(&thread, &gameMemory, &gameBuffer, newInput);
@@ -1277,6 +1278,7 @@ WinMain(HINSTANCE hInstance,
                         soundBuffer.samples = samples;
                         if(gameCode.getSoundSamples)
                         {
+                            // Get the sound samples from the game code
                             gameCode.getSoundSamples(&thread, &gameMemory, &soundBuffer);
                         }
 
@@ -1312,6 +1314,7 @@ WinMain(HINSTANCE hInstance,
                     else
                     {
                         //missed frame rate!!
+                        // TODO : Logging system
                     }
 
                     LARGE_INTEGER endCounter = Win32GetWallClock();

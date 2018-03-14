@@ -647,6 +647,7 @@ SpeculativeCollide(sim_entity *mover, sim_entity *region)
     return result;
 }
 
+// This is the actual collision detection for most of the entities
 internal void
 MoveEntity(game_state *gameState, sim_region *simRegion, sim_entity *entity, 
             real32 dtForFrame, move_spec *moveSpec, v3 ddP)
