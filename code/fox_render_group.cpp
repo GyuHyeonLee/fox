@@ -105,15 +105,11 @@ Unpack4x8(uint32 packed)
         enviromnet_map *map, real32 distanceFromMapInZ)
     {
     /* NOTE :
-
        ScreenSpaceUV tells us where the ray is being cast _from_ in
        normalized screen coordinates.
-
        SampleDirection tells us what direction the cast is going -
        it does not have to be normalized.
-
        Roughness says which LODs of Map we sample from.
-
        DistanceFromMapInZ says how far the map is from the sample point in Z, given
        in meters.
     */
@@ -528,8 +524,6 @@ Unpack4x8(uint32 packed)
             blendedb = _mm_mul_ps(one255_4x, _mm_sqrt_ps(blendedb));
             blendeda = _mm_mul_ps(one255_4x, blendeda);
 
-#if 0
-            // NOTE : This is another way to put a, r, g, b into proper order
             // NOTE : IMPORTANT : These are in named in register(memory) orders!
             // However, if you see this inside the debugger, it will be shown differently 
             // because it will be shown in c style array.
@@ -542,32 +536,27 @@ Unpack4x8(uint32 packed)
             __m128i argb1 = _mm_unpackhi_epi32(r1b1r0b0, a1g1a0g0); 
             __m128i argb2 = _mm_unpacklo_epi32(r3b3r2b2, a3g3a2g2); 
             __m128i argb3 = _mm_unpackhi_epi32(r3b3r2b2, a3g3a2g2); 
-#endif
-            // NOTE : Converct packed single precision 32bit floating value
-            // into 32bit integer value
-            __m128i intr = _mm_cvtps_epi32(blendedr);
-            __m128i intg = _mm_cvtps_epi32(blendedg);
-            __m128i intb = _mm_cvtps_epi32(blendedb);
-            __m128i inta = _mm_cvtps_epi32(blendeda);
 
-            // Moved source r, g, b, a values
-            __m128i sr = _mm_slli_epi32(intr, 16);
-            __m128i sg = _mm_slli_epi32(intg, 8);
-            __m128i sb = _mm_slli_epi32(intb, 0);
-            __m128i sa = _mm_slli_epi32(inta, 24);
+            // NOTE : Change these float values to integer values
 
-            // __m128i dest = _mm_or_si128(_mm_or_si128(sr, sg), _mm_or_si128(sb, sa));
-            __m128i dest = _mm_or_si128(_mm_or_si128(_mm_or_si128(sr, sg), sb), sa);
+            for(int i = 0;
+                i < 4;
+                ++i)
+            {
+                if(shouldFill[i])
+                {
+                    // NOTE : Put it back as a, r, g, b order
+                    *(pixel + i) = (((uint32)(GetValue(blendeda, i) + 0.5f) << 24) |
+                        ((uint32)(GetValue(blendedr, i) + 0.5f) << 16) |
+                        ((uint32)(GetValue(blendedg, i) + 0.5f) << 8) |
+                        ((uint32)(GetValue(blendedb, i) + 0.5f) << 0));
+                }
+            }
 
-            // NOTE : because pixel may be not be 16 bit aligned and it is normally 8bit aligned 
-            // because each r, g, b, and a value is 8 bit value, it will not allow us to put 16bit aligned
-            // memory to the pixel pointer
-            // therefore, we should tell the compiler that it's okay not to be aligned.
-            _mm_storeu_si128((__m128i *)pixel, dest);
-            
             // We could not use *pixel++ as we did because
             // we are performing some tests against pixels!
             pixel += 4;
+
         }
 
         row += buffer->pitch;
@@ -845,7 +834,6 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
         Let's say that the result is blendedColor
     2. blend the screen and the blendedColor
         This is our result!
-
     Basically, the function is B(Cs, B(S, D))
     and the equation is
     Alpha = A0 + A1 - A0A\*/
@@ -868,14 +856,11 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
 
     /*
         Perspective Projection
-
         According to the similiar triangles, this equation is made.
         EntityX / ProjectedX = (CameraZ - EntityZ) / focalLength
         -> ProjectedX = focalLength * EntityX / (CameraZ - EntityZ)
-
         Where EntityX is rawX and
         FocalLength is distance between the camera(eye) and the monitor
-
         Same thing is also true with Y.
     */
 

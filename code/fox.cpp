@@ -9,6 +9,9 @@
 // #include "fox_etity.cpp"
 #include "fox_sim_region.cpp"
 
+// NOTE : OpenGL includes
+// #include "include/glad/glad.h"
+#include "include/GLFW/glfw3.h"
 namespace
 {
     #define TONE_VOLUME 3000
@@ -1089,7 +1092,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     render_group *renderGroup = AllocateRenderGroup(&tranState->tranArena, Megabytes(4), drawBuffer->width, drawBuffer->height);
 
     // Clear the buffer!
-    Clear(renderGroup, V4(0.5f, 0.5f, 0.5f, 0));
+    Clear(renderGroup, V4(0.7f, 0.7f, 0.7f, 0));
     
     rect2 screenBound = GetCameraRectangleAtTarget(renderGroup);
     v2 screenCenter = 0.5f* V2i(drawBuffer->width, drawBuffer->height);

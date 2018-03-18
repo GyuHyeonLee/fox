@@ -27,6 +27,7 @@ union v3
     };
     real32 e[3];
 };
+
 union v4
 {
     struct
@@ -85,7 +86,6 @@ V2i(int32 x, int32 y)
     v2 result = {(real32)x, (real32)y};
     return result;
 }
-
 
 inline v2
 V2i(uint32 x, uint32 y)

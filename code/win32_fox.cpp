@@ -34,6 +34,7 @@ Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
     - Hardware accelration (OpenGL or Direct3D or BOTH??)
     - GetKeyboadLayout (for French keyboard, international WASD support)
     = ChangeDisplaySetting option if we detect slow fullscreen blit??
+    - OpenGL Stuff? How can we get that Opengl things widthen win32 playform layer?
 
     JUST A PARTIAL LIST OF STUFF!!
 *****/
@@ -46,8 +47,12 @@ Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
 #include <windows.h>
 #include <stdio.h>
 #include <malloc.h>
+// These are not linked directly = We are using GetProaddress to get the specific function
+// Because some of the functions may not be inside the game!
 #include <xinput.h>
 #include <dsound.h>
+// OpenGL for Windows(win32)
+#include <gl/gl.h>
 
 #include "win32_fox.h"
 
@@ -247,7 +252,6 @@ DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
     return result;
 }
 
-
 DEBUG_PLATFORM_WRTIE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
 {
     bool32 result = 0;
@@ -271,6 +275,46 @@ DEBUG_PLATFORM_WRTIE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
     }//if(fileHandle)
 
     return result;
+}
+
+internal void
+Win32InitOpenGL(HWND window)
+{
+    HDC windowDC = GetDC(window);
+
+    // Setup the opengl by specifying what we are trying to do
+    // what pixel format we are using, are we display for the screen..
+    PIXELFORMATDESCRIPTOR pixelFormat = {};
+    pixelFormat.nSize = sizeof(pixelFormat);
+    pixelFormat.nVersion = 1;
+    pixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+    pixelFormat.cColorBits = 32;
+    pixelFormat.cAlphaBits = 8;
+
+    int suggestedPixelFormatIndex = ChoosePixelFormat(windowDC, &pixelFormat);
+#if 1
+
+    PIXELFORMATDESCRIPTOR suggestedPixelFormat = {};
+    DescribePixelFormat(windowDC, suggestedPixelFormatIndex,
+                        sizeof(PIXELFORMATDESCRIPTOR), &suggestedPixelFormat);
+
+    SetPixelFormat(windowDC, suggestedPixelFormatIndex, &suggestedPixelFormat);
+#endif
+    // Opengl Rendering Context
+    // This is specific for the thread, so a thread that calls the opengl funcitons
+    // MUST have called this!
+    HGLRC openglRC = wglCreateContext(windowDC);
+    if(wglMakeCurrent(windowDC, openglRC))
+    {
+        // NOTE : Setting up Opengl succeeded
+    } 
+    else
+    {
+        InvalidCodePath;
+        // Failed, should have never come down here
+    }
+
+    ReleaseDC(window, windowDC);
 }
 
 #define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
@@ -441,7 +485,8 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD by
     }
 }
 
-win32_window_dimension Win32GetWindowDimension(HWND window)
+win32_window_dimension 
+Win32GetWindowDimension(HWND window)
 {
     win32_window_dimension result;
 
@@ -489,6 +534,7 @@ void Win32DisplayBuffer(HDC deviceContext,
                         int windowWidth, int windowHeight,
                         win32_offscreen_buffer *buffer)
 {
+#if 0
     int32 offsetX = 0;
     int32 offsetY = 0;
 
@@ -517,6 +563,12 @@ void Win32DisplayBuffer(HDC deviceContext,
                     &buffer->info,
                     DIB_RGB_COLORS, SRCCOPY);
     }
+
+#endif
+    glViewport(0, 0, windowWidth, windowHeight);
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    SwapBuffers(deviceContext);
 }
 
 internal
@@ -579,6 +631,7 @@ Win32DebugDrawVertical(win32_offscreen_buffer *backBuffer, int x, int top, int b
         pixel += backBuffer->pitch;
     }
 }
+
 internal void
 Win32DebugSyncDisplay(win32_offscreen_buffer *backBuffer, 
                     int timeMarkerCount, win32_debug_time_marker *timeMarkers, 
@@ -914,7 +967,6 @@ WinMain(HINSTANCE hInstance,
     //if not, we should not, so we are using this variable.
     bool32 isSleepGranular = timeBeginPeriod(desiredSchedulerMS) == TIMERR_NOERROR;
 
-
     /*Get the DLL path*/
     win32_state win32State = {};
     Win32GetEXEFileName(&win32State);
@@ -933,6 +985,7 @@ WinMain(HINSTANCE hInstance,
     /*Load XInput Library*/
     Win32LoadXInput();
 
+    // TODO : How can we set this up with opengl?
     int32 screenWidth = 960;
     int32 screenHeight = 540;
     /* NOTE : 1080p display mode is 1920x1080 -> Half of that is 960x540
@@ -972,6 +1025,7 @@ WinMain(HINSTANCE hInstance,
                 0,
                 hInstance,
                 0);
+
         if(hWnd)
         {
             HDC refreshDC = GetDC(hWnd);
@@ -985,6 +1039,8 @@ WinMain(HINSTANCE hInstance,
             int gameUpdateHz = monitorRefreshHz / 2;
             real32 targetSecondsPerFrame = 1.0f / (real32)gameUpdateHz;
 
+            // OpenGL
+            Win32InitOpenGL(hWnd);
             win32_sound_output soundOutput = {0};
 
             soundOutput.samplesPerSecond = 48000;                        
@@ -1015,6 +1071,7 @@ WinMain(HINSTANCE hInstance,
             gameMemory.debugPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
             uint64 totalSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
             // TODO :Use MEM_LARGE_PAGES. This need many pre-functions so this is todo.
+            
             gameMemory.permanentStorage = VirtualAlloc(baseAddress, (size_t)totalSize,
                                                         MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
             gameMemory.transientStorage = ((uint8 *)gameMemory.permanentStorage + gameMemory.permanentStorageSize);
