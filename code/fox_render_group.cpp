@@ -242,6 +242,7 @@ Unpack4x8(uint32 packed)
     // NOTE : Premulitplied color alpha!
         color.rgb *= color.a;
 
+        // _mm_set1_ps is for the floating value
         __m128 colorr_4x = _mm_set1_ps(color.r);
         __m128 colorg_4x = _mm_set1_ps(color.g);
         __m128 colorb_4x = _mm_set1_ps(color.b);
@@ -263,8 +264,7 @@ Unpack4x8(uint32 packed)
         int32 widthMax = buffer->width - 1 - 4;
         int32 heightMax = buffer->height - 1 - 4;
 
-// NOTE : because the input value is in 255 space,
-// convert it to be in linear 1 space
+        // NOTE : These are the constants for the SIMD level
         real32 one255 = 255.0f;
         __m128 one255_4x = _mm_set1_ps(one255);
         __m128 one_4x = _mm_set1_ps(1.0f);
@@ -325,6 +325,7 @@ Unpack4x8(uint32 packed)
         minY * buffer->pitch);
 
 #define GetValue(a, i) ((float *)&a)[i]
+// TODO : Find out is this okay?
 #define mmSquare(a) _mm_mul_ps(a, a)
 
     BEGIN_TIMED_BLOCK(ProcessPixel);
@@ -376,7 +377,7 @@ Unpack4x8(uint32 packed)
             __m128 blendedb = zero_4x;
             __m128 blendeda = zero_4x;
             
-            bool32 shouldFill[4];
+            //bool32 shouldFill[4];
 
             // For now, we are going 4 for each x OUTSIDE the loop, so we have to manually put the values!
             __m128 pixelPosx =
@@ -395,15 +396,16 @@ Unpack4x8(uint32 packed)
             __m128 u = _mm_add_ps(_mm_mul_ps(basePosx_4x, nxAxisx_4x), _mm_mul_ps(basePosy_4x, nxAxisy_4x));
             __m128 v = _mm_add_ps(_mm_mul_ps(basePosx_4x, nyAxisx_4x), _mm_mul_ps(basePosy_4x, nyAxisy_4x));
 
+#if 0
+            __m128i shouldFill = ((GetValue(u, i) >= 0.0f) && (GetValue(u, i) <= 1.0f) && 
+                    (GetValue(v, i) >= 0.0f) && (GetValue(v, i) <= 1.0f));
+#endif
             for(int i = 0;
                 i < 4;
                 ++i)
             {
-                shouldFill[i] = ((GetValue(u, i) >= 0.0f) && (GetValue(u, i) <= 1.0f) && 
-                    (GetValue(v, i) >= 0.0f) && (GetValue(v, i) <= 1.0f));
-
                 // We can test whether the pixel is inside the texture or not with this test
-                if(shouldFill[i])
+                //if(shouldFill[i])
                 {
                     // TODO : Put this back to the original thing!
                     real32 texelX= ((GetValue(u, i)*(real32)(texture->width - 2)));
@@ -430,12 +432,14 @@ Unpack4x8(uint32 packed)
 
                     // NOTE : Unpack texels
                     // We are unpacking 4 texels so that we can blend those 4!
+                    // TODO : How do we get the pixel samples from the SIMD without using our function
+                    // but instead using the sse or sse2 intel function?
                     GetValue(texelAr, i) = (real32)((sampleA >> 16) & 0xFF);
                     GetValue(texelAg, i) = (real32)((sampleA >> 8) & 0xFF);
                     GetValue(texelAb, i) = (real32)((sampleA >> 0) & 0xFF);
                     GetValue(texelAa, i) = (real32)((sampleA >> 24) & 0xFF);
 
-                    GetValue(texelBr, i)= (real32)((sampleB >> 16) & 0xFF);
+                    GetValue(texelBr, i) = (real32)((sampleB >> 16) & 0xFF);
                     GetValue(texelBg, i) = (real32)((sampleB >> 8) & 0xFF);
                     GetValue(texelBb, i) = (real32)((sampleB >> 0) & 0xFF);
                     GetValue(texelBa, i) = (real32)((sampleB >> 24) & 0xFF);
@@ -536,6 +540,7 @@ Unpack4x8(uint32 packed)
             __m128i argb1 = _mm_unpackhi_epi32(r1b1r0b0, a1g1a0g0); 
             __m128i argb2 = _mm_unpacklo_epi32(r3b3r2b2, a3g3a2g2); 
             __m128i argb3 = _mm_unpackhi_epi32(r3b3r2b2, a3g3a2g2); 
+<<<<<<< HEAD
 
             // NOTE : Change these float values to integer values
 
@@ -553,6 +558,32 @@ Unpack4x8(uint32 packed)
                 }
             }
 
+=======
+#endif
+            // NOTE : Converct packed single precision 32bit floating value
+            // into 32bit integer value
+            __m128i intr = _mm_cvtps_epi32(blendedr);
+            __m128i intg = _mm_cvtps_epi32(blendedg);
+            __m128i intb = _mm_cvtps_epi32(blendedb);
+            __m128i inta = _mm_cvtps_epi32(blendeda);
+
+            // Moved source r, g, b, a values
+            __m128i sr = _mm_slli_epi32(intr, 16);
+            __m128i sg = _mm_slli_epi32(intg, 8);
+            __m128i sb = _mm_slli_epi32(intb, 0);
+            __m128i sa = _mm_slli_epi32(inta, 24);
+
+            // __m128i dest = _mm_or_si128(_mm_or_si128(sr, sg), _mm_or_si128(sb, sa));
+            __m128i dest = _mm_or_si128(_mm_or_si128(_mm_or_si128(sr, sg), sb), sa);
+
+            //__m128i outDest = _mm_or_si128(dest, outMask);
+            // NOTE : because pixel may be not be 16 bit aligned and it is normally 8bit aligned 
+            // because each r, g, b, and a value is 8 bit value, it will not allow us to put 16bit aligned
+            // memory to the pixel pointer
+            // therefore, we should tell the compiler that it's okay not to be aligned.
+            _mm_storeu_si128((__m128i *)pixel, dest);
+            
+>>>>>>> 00c054e91fa19bc96a684cc8085a8061f764b51d
             // We could not use *pixel++ as we did because
             // we are performing some tests against pixels!
             pixel += 4;
@@ -660,7 +691,6 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
             x < maxX;
             ++x)
         {
-
 #if 1
             v2 pixelPos = V2i(x, y);
             // pixelPos based on the origin

@@ -1515,5 +1515,4 @@ extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
 {
     game_state *gameState = (game_state *)memory->permanentStorage;
     GameOutputSound(gameState, soundBuffer);
-
 }
