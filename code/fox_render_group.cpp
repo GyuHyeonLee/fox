@@ -377,7 +377,7 @@ Unpack4x8(uint32 packed)
             __m128 blendedb = zero_4x;
             __m128 blendeda = zero_4x;
             
-            //bool32 shouldFill[4];
+            bool32 shouldFill[4];
 
             // For now, we are going 4 for each x OUTSIDE the loop, so we have to manually put the values!
             __m128 pixelPosx =
@@ -396,16 +396,14 @@ Unpack4x8(uint32 packed)
             __m128 u = _mm_add_ps(_mm_mul_ps(basePosx_4x, nxAxisx_4x), _mm_mul_ps(basePosy_4x, nxAxisy_4x));
             __m128 v = _mm_add_ps(_mm_mul_ps(basePosx_4x, nyAxisx_4x), _mm_mul_ps(basePosy_4x, nyAxisy_4x));
 
-#if 0
-            __m128i shouldFill = ((GetValue(u, i) >= 0.0f) && (GetValue(u, i) <= 1.0f) && 
-                    (GetValue(v, i) >= 0.0f) && (GetValue(v, i) <= 1.0f));
-#endif
             for(int i = 0;
                 i < 4;
                 ++i)
             {
+                    shouldFill[i] = ((GetValue(u, i) >= 0.0f) && (GetValue(u, i) <= 1.0f) && 
+                    (GetValue(v, i) >= 0.0f) && (GetValue(v, i) <= 1.0f));
                 // We can test whether the pixel is inside the texture or not with this test
-                //if(shouldFill[i])
+                if(shouldFill[i])
                 {
                     // TODO : Put this back to the original thing!
                     real32 texelX= ((GetValue(u, i)*(real32)(texture->width - 2)));
@@ -540,26 +538,7 @@ Unpack4x8(uint32 packed)
             __m128i argb1 = _mm_unpackhi_epi32(r1b1r0b0, a1g1a0g0); 
             __m128i argb2 = _mm_unpacklo_epi32(r3b3r2b2, a3g3a2g2); 
             __m128i argb3 = _mm_unpackhi_epi32(r3b3r2b2, a3g3a2g2); 
-<<<<<<< HEAD
 
-            // NOTE : Change these float values to integer values
-
-            for(int i = 0;
-                i < 4;
-                ++i)
-            {
-                if(shouldFill[i])
-                {
-                    // NOTE : Put it back as a, r, g, b order
-                    *(pixel + i) = (((uint32)(GetValue(blendeda, i) + 0.5f) << 24) |
-                        ((uint32)(GetValue(blendedr, i) + 0.5f) << 16) |
-                        ((uint32)(GetValue(blendedg, i) + 0.5f) << 8) |
-                        ((uint32)(GetValue(blendedb, i) + 0.5f) << 0));
-                }
-            }
-
-=======
-#endif
             // NOTE : Converct packed single precision 32bit floating value
             // into 32bit integer value
             __m128i intr = _mm_cvtps_epi32(blendedr);
@@ -583,7 +562,6 @@ Unpack4x8(uint32 packed)
             // therefore, we should tell the compiler that it's okay not to be aligned.
             _mm_storeu_si128((__m128i *)pixel, dest);
             
->>>>>>> 00c054e91fa19bc96a684cc8085a8061f764b51d
             // We could not use *pixel++ as we did because
             // we are performing some tests against pixels!
             pixel += 4;

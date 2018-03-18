@@ -10,8 +10,6 @@
 #include "fox_sim_region.cpp"
 
 // NOTE : OpenGL includes
-// #include "include/glad/glad.h"
-#include "include/GLFW/glfw3.h"
 namespace
 {
     #define TONE_VOLUME 3000
