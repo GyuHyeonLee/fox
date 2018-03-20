@@ -657,7 +657,9 @@ MoveEntity(game_state *gameState, sim_region *simRegion, sim_entity *entity,
     
     world *world = simRegion->world;
 
-    // Does the Acceleration vector need to the unit length?
+    // Sometimes, the ddP should be normalized
+    // for example for the player, player will only change the direction,
+    // in this case, we want it normalized.
     if(moveSpec->unitMaxAccelVector)
     {
         real32 ddPLength = LengthSq(ddP);
@@ -679,12 +681,14 @@ MoveEntity(game_state *gameState, sim_region *simRegion, sim_entity *entity,
         ddP += V3(0, 0, -9.8f);    //gravity
     }
 
-    // Delta of two positions : new pos and old pos
+    // Delta of the old position and the new position
+    // Equation : new p = 1/2 * a * t * t + v * t + p0
     v3 entityDelta = 0.5f * ddP * Square(dtForFrame) + 
-                    entity->dPos * dtForFrame; // Equation : new p = 1/2 * a * t * t + v * t + p0
+                    entity->dPos * dtForFrame; 
 
     // This is for ACTAULLY moving the entity, because it's velocity
-    entity->dPos = ddP * dtForFrame + entity->dPos; // Equation : new v = a * t + v0
+    // Equation : new v = a * t + v0
+    entity->dPos = ddP * dtForFrame + entity->dPos; 
 
     // TODO : For now, this is assert
     // Later, let's update this so that we can have safe update bound for sim region!

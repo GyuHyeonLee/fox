@@ -65,6 +65,8 @@ global_variable bool32 globalDEBUGShowCursor;
 
 global_variable WINDOWPLACEMENT globalWindowPosition = {sizeof(globalWindowPosition)};
 
+global_variable uint32 globalBlitTextureHandle;
+
 /*****
     Load XInput functions ourselves because if we don't do this
     the game will not just start without controller(player can just use keyboard!).
@@ -287,6 +289,7 @@ Win32InitOpenGL(HWND window)
     PIXELFORMATDESCRIPTOR pixelFormat = {};
     pixelFormat.nSize = sizeof(pixelFormat);
     pixelFormat.nVersion = 1;
+    pixelFormat.iPixelType = PFD_TYPE_RGBA;
     pixelFormat.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
     pixelFormat.cColorBits = 32;
     pixelFormat.cAlphaBits = 8;
@@ -304,9 +307,14 @@ Win32InitOpenGL(HWND window)
     // This is specific for the thread, so a thread that calls the opengl funcitons
     // MUST have called this!
     HGLRC openglRC = wglCreateContext(windowDC);
+
+    // Make the opengl rendering context current
     if(wglMakeCurrent(windowDC, openglRC))
     {
         // NOTE : Setting up Opengl succeeded
+
+        // Make texture for final blitting
+        glGenTextures(1, &globalBlitTextureHandle);
     } 
     else
     {
@@ -565,9 +573,73 @@ void Win32DisplayBuffer(HDC deviceContext,
     }
 
 #endif
+    // This viewport gives information where to display
+    // because openGL will use this to move the point from the unit space(NDC, clip space)
+    // to the screen space.
+    // first two values mean where to start, and last two means how much size. 
     glViewport(0, 0, windowWidth, windowHeight);
-    glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+
+    glBindTexture(GL_TEXTURE_2D, globalBlitTextureHandle);
+
+    // Store the texture to the GPU
+    glTexImage2D(GL_TEXTURE_2D, 0, 
+                GL_RGBA8, // How the GPU stores the data 
+                buffer->width, buffer->height,
+                0,
+                GL_BGRA_EXT, // What data format are we passing
+                GL_UNSIGNED_BYTE, // size of each r, g, b ,a
+                buffer->memory);
+
+    // Set the stored texture flags
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);    
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);    
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+    // Enale texturing
+    glEnable(GL_TEXTURE_2D);
+
+    // Clear the buffer
+    glClearColor(0.8f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+
+    glMatrixMode(GL_TEXTURE);
+    glLoadIdentity();
+    // Set the modelview and projection matrix
+    glMatrixMode(GL_MODELVIEW_MATRIX);   
+    glLoadIdentity();
+    // NOTE : Projection Matrix moves the points from the world
+    // TO THE UNIT SPACE(NDC)
+    glMatrixMode(GL_PROJECTION_MATRIX);
+    glLoadIdentity();
+
+    // Draw primitives(line, triangle...)
+    real32 p = 0.9f;
+
+    glBegin(GL_TRIANGLES);
+    // NOTE : Lower Traingle
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(-p, -p);
+
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(p, -p);
+
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(p, p);
+
+    // NOTE : Lower Triangle
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(-p, -p);
+
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(p, p);
+
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(-p, p);
+
+    glEnd();
+
     SwapBuffers(deviceContext);
 }
 
@@ -985,7 +1057,6 @@ WinMain(HINSTANCE hInstance,
     /*Load XInput Library*/
     Win32LoadXInput();
 
-    // TODO : How can we set this up with opengl?
     int32 screenWidth = 960;
     int32 screenHeight = 540;
     /* NOTE : 1080p display mode is 1920x1080 -> Half of that is 960x540

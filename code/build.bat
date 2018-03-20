@@ -29,7 +29,6 @@ REM cl: command line
 REM -Fm: Create map file. MTdap file shows the whole process.
 REM -opt:ref: Hey linker don't put something into the exe if noone is using it.
 
-REM Do the OpenGL32 things with library loading!
 set commonCompilerFlags= -O2 -MTd -nologo -Gm- -GR- -EHa- -Oi -WX -W4 -wd4201 -wd4100 -wd4189 -wd4505 -wd4127 -DFOX_WIN32=1 -DFOX_SLOW=1 -DFOX_DEBUG=1 -FC -Z7
 set commonLinkerFlags= -incremental:no -opt:ref user32.lib gdi32.lib winmm.lib OpenGL32.Lib  
 

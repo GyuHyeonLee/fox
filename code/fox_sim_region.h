@@ -83,6 +83,7 @@ struct sim_entity
     entity_type type;
     uint32 flags;
     
+    // TODO 
     sim_entity_collision_volume_group *collision;
     // What the hell is this var?
     int32 dAbsTileZ;
@@ -91,9 +92,15 @@ struct sim_entity
     uint32 hitPointMax;
     hit_point hitPoints[16];
 
+    // NOTE : Sword Variables
+    // By this, every entity has sword.
+    // TODO : We don't want every entity to have sword,
+    // so get rid of this?
     entity_reference sword;
+    // distance limit of the sword
     real32 distanceLimit;
 
+    // NOTE : Familiar Variables
     real32 tBob;
     uint32 facingDirection;
 
@@ -129,7 +136,7 @@ struct sim_region
     // This is to get the sim entity based on the storage index
     // because now, the storgae entity does not know about sim entity
     // So if someone want to get the sim entity with storageindex,
-    // you have to come to hash using the torageindex, get the hash,
+    // you have to come to hash using the storageIndex, get the hash,
     // and then get the pointer to the sim entity
     sim_entity_hash hash[4096];
 };

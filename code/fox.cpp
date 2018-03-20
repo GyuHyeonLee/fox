@@ -45,6 +45,7 @@ GameOutputSound(game_state *gameState, game_sound_output_buffer *soundBuffer)
 // This is the memory template for the bmp files
 // When we read the bmp file, the memory block should be EXACTLY like this(including the ORDER!)
 // Start from here, start exact fitting because we should read this memory in exact order
+// TODO : How can we use this for the opengl?
 #pragma pack(push, 1)
 struct bitmap_header
 {
@@ -673,6 +674,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
         real32 tileSideInMeters = 1.4f;
         real32 tileDeptInMeters = 3.0f;
+        
         // NOTE : Reserve entity slot 0 for the null entity
         AddLowEntity(gameState, EntityType_Null, NullPosition());
         gameState->lowEntityCount = 1;
@@ -927,7 +929,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             {
                 screenY += 1;
             }
-
         }
 
         world_position cameraPos = {};
@@ -1273,6 +1274,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             {
                 case EntityType_Hero:
                 {
+                    // Prepare for the multiple players
                     for(uint32 controlIndex = 0;
                         controlIndex < ArrayCount(gameState->controlledHeroes);
                         ++controlIndex)
@@ -1288,11 +1290,14 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                 entity->dPos.z = conHero->dZ;
                             }
 
+                            // Changing the movespec does not effect the entity immediately
+                            // it will be used later in MoveEntity call.
                             moveSpec.unitMaxAccelVector = true;
                             moveSpec.speed = 50.0f;
                             moveSpec.drag = 8.0f;
                             ddP = V3(conHero->ddPlayer, 0);
 
+                            // If the player's sword is in valid space in the world
                             if(conHero->dSword.x != 0.0f || conHero->dSword.y != 0.0f)
                             {
                                 sim_entity *sword = entity->sword.ptr;
@@ -1302,6 +1307,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                                 entity->pos, 
                                                 entity->dPos + 5.0f * V3(conHero->dSword, 0));
 
+                                // Sword itself should not collide with the player!
+                                // TODO : Maybe change this when the enemy that makes player hit himself appears...?
                                 AddCollisionRule(gameState, entity->storageIndex, sword->storageIndex, false);
                             }
                         }
@@ -1377,6 +1384,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             }
 
 
+            // Move every entity that was set special && movable
             if(!IsSet(entity, EntityFlag_Nonspatial) && IsSet(entity, EntityFlag_Movable))
             {
                 MoveEntity(gameState, simRegion, entity, input->dtForFrame, &moveSpec, ddP);
