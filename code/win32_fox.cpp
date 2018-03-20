@@ -43,6 +43,7 @@ Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
 
 #include "fox.h"
 #include "fox_intrinsics.h"
+#include "fox_math.h"
 
 #include <windows.h>
 #include <stdio.h>
@@ -206,33 +207,33 @@ DEBUG_PLATFORM_READ_ENTIRE_FILE(DEBUGPlatformReadEntireFile)
 
     if(fileHandle != INVALID_HANDLE_VALUE)
     {
-		LARGE_INTEGER fileSize = {};
+      LARGE_INTEGER fileSize = {};
         /*
         Using GetFileSizeEx instead of GetFileSize because GetFileSize can only hold 32 bit value
         - which means up to 4 gigabytes.
         */
-        if(GetFileSizeEx(fileHandle, &fileSize))
+      if(GetFileSizeEx(fileHandle, &fileSize))
+      {
+        uint32 fileSize32 = SafeTruncateUInt64(fileSize.QuadPart);
+        result.content = VirtualAlloc(0, fileSize32, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+        if(result.content)
         {
-            uint32 fileSize32 = SafeTruncateUInt64(fileSize.QuadPart);
-            result.content = VirtualAlloc(0, fileSize32, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-            if(result.content)
-            {
-                DWORD bytesRead;
+            DWORD bytesRead;
 
                 //fileSize32 == bytesRead is for the case
                 //when the file size has been changed while we were reading the file.
-                if(ReadFile(fileHandle, result.content, fileSize32, &bytesRead, 0) && 
-                    fileSize32 == bytesRead)
-                {
-                    result.contentSize = bytesRead;
-                }
-                else
-                {
+            if(ReadFile(fileHandle, result.content, fileSize32, &bytesRead, 0) && 
+                fileSize32 == bytesRead)
+            {
+                result.contentSize = bytesRead;
+            }
+            else
+            {
                     //if it failed, free the allocated memory
                     //so that the user can know something bad happened.
-                    DEBUGPlatformFreeFileMemory(thread, result.content);
-                    result.content = 0;
-                    result.contentSize = 0;
+                DEBUGPlatformFreeFileMemory(thread, result.content);
+                result.content = 0;
+                result.contentSize = 0;
                 }//if(ReadFile)
             }
             else
@@ -264,10 +265,10 @@ DEBUG_PLATFORM_WRTIE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
         DWORD bytesWritten;
         if(WriteFile(fileHandle, memory, memorySize, &bytesWritten, 0))
         {
-           result = (bytesWritten == memorySize); 
-        }
-        else
-        {
+         result = (bytesWritten == memorySize); 
+     }
+     else
+     {
         }//if(WriteFile)
         
         CloseHandle(fileHandle);
@@ -299,7 +300,7 @@ Win32InitOpenGL(HWND window)
 
     PIXELFORMATDESCRIPTOR suggestedPixelFormat = {};
     DescribePixelFormat(windowDC, suggestedPixelFormatIndex,
-                        sizeof(PIXELFORMATDESCRIPTOR), &suggestedPixelFormat);
+        sizeof(PIXELFORMATDESCRIPTOR), &suggestedPixelFormat);
 
     SetPixelFormat(windowDC, suggestedPixelFormatIndex, &suggestedPixelFormat);
 #endif
@@ -337,7 +338,7 @@ Win32InitDSound(HWND hWnd, int32 samplesPerSec, int32 secondaryBufferSize)
     {
         // NOTE: Get a DirectSound object! - cooperative
         direct_sound_create *DirectSoundCreate = (direct_sound_create *)
-            GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+        GetProcAddress(DSoundLibrary, "DirectSoundCreate");
 
         // TODO: Double-check that this works on XP
         // TODO: Should we use direct sound 7 instead of 8 for the XP? 
@@ -422,9 +423,9 @@ Win32ClearSoundBuffer(win32_sound_output *soundOutput)
     VOID *region2;
     DWORD region2Size;
     if(SUCCEEDED(globalSecondaryBuffer->Lock(0, soundOutput->secondaryBufferSize,
-                                        &region1, &region1Size, 
-                                        &region2, &region2Size, 
-                                        0)))
+        &region1, &region1Size, 
+        &region2, &region2Size, 
+        0)))
     {
         //because we want to initalize this byte by byte,
         //cast it in uint8
@@ -450,7 +451,7 @@ Win32ClearSoundBuffer(win32_sound_output *soundOutput)
 
 internal void
 Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD bytesToWrite, 
-                    game_sound_output_buffer *sourceBuffer)
+    game_sound_output_buffer *sourceBuffer)
 {
 
     //TOOD : More strenuous test!
@@ -460,9 +461,9 @@ Win32FillSoundBuffer(win32_sound_output *soundOutput, DWORD byteToLock, DWORD by
     DWORD region2Size;
 
     if(SUCCEEDED(globalSecondaryBuffer->Lock(byteToLock, bytesToWrite,
-                                        &region1, &region1Size, 
-                                        &region2, &region2Size, 
-                                        0)))
+        &region1, &region1Size, 
+        &region2, &region2Size, 
+        0)))
     {
         //targetSample = Where in the memory are we going to write.
         DWORD region1SampleCount = region1Size / soundOutput->bytesPerSample;        
@@ -509,7 +510,7 @@ Win32GetWindowDimension(HWND window)
 
     return result;
 }
-    
+
 void Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int height)
 {
     if(buffer->memory)
@@ -539,8 +540,8 @@ void Win32ResizeDIBSection(win32_offscreen_buffer *buffer, int width, int height
 }
 
 void Win32DisplayBuffer(HDC deviceContext, 
-                        int windowWidth, int windowHeight,
-                        win32_offscreen_buffer *buffer)
+    int windowWidth, int windowHeight,
+    win32_offscreen_buffer *buffer)
 {
 #if 0
     int32 offsetX = 0;
@@ -607,36 +608,50 @@ void Win32DisplayBuffer(HDC deviceContext,
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     // Set the modelview and projection matrix
-    glMatrixMode(GL_MODELVIEW_MATRIX);   
+    glMatrixMode(GL_MODELVIEW);   
     glLoadIdentity();
+
     // NOTE : Projection Matrix moves the points from the world
     // TO THE UNIT SPACE(NDC)
-    glMatrixMode(GL_PROJECTION_MATRIX);
-    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    real32 a = SafeRatio1(2.0f, (real32)buffer->width);
+    real32 b = SafeRatio1(2.0f, (real32)buffer->height);
 
-    // Draw primitives(line, triangle...)
-    real32 p = 0.9f;
+    // NOTE : This should be in row 
+    // Reference : https://www.cs.sfu.ca/~haoz/teaching/htmlman/loadmatrix.html
+    real32 projMatrix[] = 
+    {
+        a, 0, 0, 0,
+        0, b, 0, 0,
+        0, 0, 1.0f, 0,
+        -1.0f, -1.0f, 0, 1.0f,
+    };
+    glLoadMatrixf(projMatrix);
+
+    v2 minPos = V2(0, 0);
+    v2 maxPos = V2((real32)buffer->width, (real32)buffer->height);
 
     glBegin(GL_TRIANGLES);
+
     // NOTE : Lower Traingle
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(-p, -p);
+    glVertex2f(minPos.x, minPos.y);
 
     glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(p, -p);
+    glVertex2f(maxPos.x, minPos.y);
 
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(p, p);
+    glVertex2f(maxPos.x, maxPos.y);
 
     // NOTE : Lower Triangle
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(-p, -p);
+    glVertex2f(minPos.x, minPos.y);
 
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(p, p);
+    glVertex2f(maxPos.x, maxPos.y);
 
     glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(-p, p);
+    glVertex2f(minPos.x, maxPos.y);
 
     glEnd();
 
@@ -669,7 +684,7 @@ real32 Win32ProcessStickValue(SHORT thumbValue, SHORT deadZoneThreshold)
 
 internal
 void Win32ProcessXInputDigitalButton(game_button_state *oldState, game_button_state *newState,
-                                DWORD XInputButtonState, DWORD buttonBit)
+    DWORD XInputButtonState, DWORD buttonBit)
 {
     newState->endedDown = ((XInputButtonState & buttonBit) == buttonBit);
     newState->halfTransitionCount = (oldState->endedDown != newState->endedDown)? 1 : 0;
@@ -693,8 +708,8 @@ internal void
 Win32DebugDrawVertical(win32_offscreen_buffer *backBuffer, int x, int top, int bottom, uint32 color)
 {
     uint8 *pixel = (uint8 *)backBuffer->memory + 
-                            x * backBuffer->bytesPerPixel + 
-                            top * backBuffer->pitch;
+    x * backBuffer->bytesPerPixel + 
+    top * backBuffer->pitch;
     for(int y = top;
         y < bottom;
         ++y)
@@ -706,9 +721,9 @@ Win32DebugDrawVertical(win32_offscreen_buffer *backBuffer, int x, int top, int b
 
 internal void
 Win32DebugSyncDisplay(win32_offscreen_buffer *backBuffer, 
-                    int timeMarkerCount, win32_debug_time_marker *timeMarkers, 
-                    win32_sound_output *soundOutput,
-                    real32 targetSecondsPerFrame)
+    int timeMarkerCount, win32_debug_time_marker *timeMarkers, 
+    win32_sound_output *soundOutput,
+    real32 targetSecondsPerFrame)
 {
     int padX = 16;
     int padY = 16;
@@ -731,9 +746,9 @@ Win32DebugSyncDisplay(win32_offscreen_buffer *backBuffer,
 
 LRESULT CALLBACK 
 MainWindowProc(HWND hWnd,
-                UINT uMsg,
-                WPARAM wParam,
-                LPARAM lParam)
+    UINT uMsg,
+    WPARAM wParam,
+    LPARAM lParam)
 {
     LRESULT result = 0;
     
@@ -825,10 +840,10 @@ ToggleFullSceen(HWND window)
                         and big as the monitor to make the fullscreen
             */
             SetWindowPos(window, HWND_TOP,
-                         monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
-                         monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
-                         monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
-                         SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+               monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
+               monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+               monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
+               SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
         }
     }
     else
@@ -836,8 +851,8 @@ ToggleFullSceen(HWND window)
         SetWindowLong(window, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
         SetWindowPlacement(window, &globalWindowPosition);
         SetWindowPos(window, 0, 0, 0, 0, 0,
-                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
-                     SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+           SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+           SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
     }
 }
 
@@ -936,8 +951,8 @@ Win32ProcessPendingMessages(game_controller *keyboardController)
 
 void
 CatStrings(char *sourceA, size_t sourceACount,
-            char *sourceB, size_t sourceBCount,
-            char *dest, size_t destCount)
+    char *sourceB, size_t sourceBCount,
+    char *dest, size_t destCount)
 {
     for(size_t index = 0;
         index < sourceACount;
@@ -987,11 +1002,11 @@ StringLength(char *string)
 
 internal void
 Win32BuildEXEPathFileName(win32_state *win32State, char *fileName,
-                            int destCount, char *dest)
+    int destCount, char *dest)
 {
     CatStrings(win32State->exeFileName, win32State->onePastLastSlash - win32State->exeFileName,
-            fileName, StringLength(fileName),
-            dest, destCount);
+        fileName, StringLength(fileName),
+        dest, destCount);
 }
 
 internal void
@@ -1008,10 +1023,10 @@ HandleDebugCycleCounter(game_memory *gameMemory)
         {
             char buffer[512];
             sprintf_s(buffer, " %d : %I64ucycles, %dhit, %I64ucycles/hit\n",
-                    counterIndex,  
-                    counter->cycleCount, 
-                    counter->hitCount, 
-                    counter->cycleCount/counter->hitCount);
+                counterIndex,  
+                counter->cycleCount, 
+                counter->hitCount, 
+                counter->cycleCount/counter->hitCount);
             OutputDebugStringA(buffer);
 
             counter->cycleCount = 0;
@@ -1024,9 +1039,9 @@ HandleDebugCycleCounter(game_memory *gameMemory)
 
 int CALLBACK 
 WinMain(HINSTANCE hInstance,
-        HINSTANCE HPrevInstance,
-        LPSTR lpCmdLine,
-        int nCmdShow)
+    HINSTANCE HPrevInstance,
+    LPSTR lpCmdLine,
+    int nCmdShow)
 {
     //Because the frequency doesn't change, we can just compute here.
     LARGE_INTEGER perfCountFreqResult;
@@ -1083,19 +1098,19 @@ WinMain(HINSTANCE hInstance,
     if(RegisterClassExA(&windowClass))
     {
         HWND hWnd = 
-            CreateWindowExA(
-                0, 
-                windowClass.lpszClassName, 
-                "FoxTail",
-                WS_OVERLAPPEDWINDOW|WS_VISIBLE,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                CW_USEDEFAULT,
-                0,
-                0,
-                hInstance,
-                0);
+        CreateWindowExA(
+            0, 
+            windowClass.lpszClassName, 
+            "FoxTail",
+            WS_OVERLAPPEDWINDOW|WS_VISIBLE,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            CW_USEDEFAULT,
+            0,
+            0,
+            hInstance,
+            0);
 
         if(hWnd)
         {
@@ -1124,7 +1139,7 @@ WinMain(HINSTANCE hInstance,
             globalSecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
             int16 *samples = (int16 *)VirtualAlloc(0, soundOutput.secondaryBufferSize, 
-                                                    MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+                MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
 
 //If possible, set the base address to where we want for debugging purpose
@@ -1144,7 +1159,7 @@ WinMain(HINSTANCE hInstance,
             // TODO :Use MEM_LARGE_PAGES. This need many pre-functions so this is todo.
             
             gameMemory.permanentStorage = VirtualAlloc(baseAddress, (size_t)totalSize,
-                                                        MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+                MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
             gameMemory.transientStorage = ((uint8 *)gameMemory.permanentStorage + gameMemory.permanentStorageSize);
 
             if(samples && gameMemory.permanentStorage && gameMemory.transientStorage)
@@ -1197,7 +1212,7 @@ WinMain(HINSTANCE hInstance,
                     {
                         //Copy the old button states
                         newKeyboardController->buttons[buttonIndex].endedDown = 
-                            oldKeyboardController->buttons[buttonIndex].endedDown;   
+                        oldKeyboardController->buttons[buttonIndex].endedDown;   
                     }
 
                     //Process message first so that we know the input                    
@@ -1210,15 +1225,15 @@ WinMain(HINSTANCE hInstance,
                     newInput->mouseY = mouseP.y;
                     newInput->mouseZ = 0; // TODO : Support mousewheel?
                     Win32ProcessKeyboardMessage(&newInput->mouseButtons[0],
-                                                GetKeyState(VK_LBUTTON) & (1 << 15));
+                        GetKeyState(VK_LBUTTON) & (1 << 15));
                     Win32ProcessKeyboardMessage(&newInput->mouseButtons[1],
-                                                GetKeyState(VK_MBUTTON) & (1 << 15));
+                        GetKeyState(VK_MBUTTON) & (1 << 15));
                     Win32ProcessKeyboardMessage(&newInput->mouseButtons[2],
-                                                GetKeyState(VK_RBUTTON) & (1 << 15));
+                        GetKeyState(VK_RBUTTON) & (1 << 15));
                     Win32ProcessKeyboardMessage(&newInput->mouseButtons[3],
-                                                GetKeyState(VK_XBUTTON1) & (1 << 15));
+                        GetKeyState(VK_XBUTTON1) & (1 << 15));
                     Win32ProcessKeyboardMessage(&newInput->mouseButtons[4],
-                                                GetKeyState(VK_XBUTTON2) & (1 << 15));
+                        GetKeyState(VK_XBUTTON2) & (1 << 15));
 
                     int maxControllerCount = XUSER_MAX_COUNT;
                     if(maxControllerCount > ArrayCount(newInput->controllers))
@@ -1244,7 +1259,7 @@ WinMain(HINSTANCE hInstance,
                             newController->isAnalog = oldController->isAnalog;                            
                             //Just not to write whole 'controllerState.Gamepad' thing
                             XINPUT_GAMEPAD *pad = &controllerState.Gamepad;
-                        
+
                             newController->averageStickX = Win32ProcessStickValue(pad->sThumbLX, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);                           
                             newController->averageStickY = Win32ProcessStickValue(pad->sThumbLY, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
                             if(newController->averageStickX != 0.0f || newController->averageStickY != 0.0f)
@@ -1289,17 +1304,17 @@ WinMain(HINSTANCE hInstance,
                             
                             //process digital buttons
                             Win32ProcessXInputDigitalButton(&oldController->actionUp, &newController->actionUp,
-                                                            pad->wButtons, XINPUT_GAMEPAD_Y);
+                                pad->wButtons, XINPUT_GAMEPAD_Y);
                             Win32ProcessXInputDigitalButton(&oldController->actionDown, &newController->actionDown,
-                                                            pad->wButtons, XINPUT_GAMEPAD_A);                                                        
+                                pad->wButtons, XINPUT_GAMEPAD_A);                                                        
                             Win32ProcessXInputDigitalButton(&oldController->actionLeft, &newController->actionLeft,
-                                                            pad->wButtons, XINPUT_GAMEPAD_X);
+                                pad->wButtons, XINPUT_GAMEPAD_X);
                             Win32ProcessXInputDigitalButton(&oldController->actionRight, &newController->actionRight,
-                                                            pad->wButtons, XINPUT_GAMEPAD_B);
+                                pad->wButtons, XINPUT_GAMEPAD_B);
                             Win32ProcessXInputDigitalButton(&oldController->start, &newController->start,
-                                                            pad->wButtons, XINPUT_GAMEPAD_START);
+                                pad->wButtons, XINPUT_GAMEPAD_START);
                             Win32ProcessXInputDigitalButton(&oldController->back, &newController->back,
-                                                            pad->wButtons, XINPUT_GAMEPAD_BACK);
+                                pad->wButtons, XINPUT_GAMEPAD_BACK);
                         }
                         else
                         {
@@ -1358,23 +1373,23 @@ WinMain(HINSTANCE hInstance,
                         }
 
                         DWORD byteToLock = ((soundOutput.runningSampleIndex*soundOutput.bytesPerSample) %
-                                            soundOutput.secondaryBufferSize);
+                            soundOutput.secondaryBufferSize);
 
                         DWORD expectedSoundBytesPerFrame =
-                            (soundOutput.samplesPerSecond*soundOutput.bytesPerSample) / gameUpdateHz;
+                        (soundOutput.samplesPerSecond*soundOutput.bytesPerSample) / gameUpdateHz;
                         real32 secondsLeftUntilFlip = (targetSecondsPerFrame - fromBeginToAudioSeconds);
                         //Where the video flip(going to the next frame) happenes
                         DWORD expectedBytesUntilFlip = (DWORD)((secondsLeftUntilFlip/targetSecondsPerFrame)*(real32)expectedSoundBytesPerFrame);
 
                         DWORD expectedFrameBoundaryByte = playCursor + expectedBytesUntilFlip;
-                    
+
                         DWORD safeWriteCursor = writeCursor;
                         if(safeWriteCursor < playCursor)
                         {
                             safeWriteCursor += soundOutput.secondaryBufferSize;
                         }
                         safeWriteCursor += soundOutput.safetyBytes;
-                    
+
                         bool32 audioCardIsLowLatency = (safeWriteCursor < expectedFrameBoundaryByte);                        
 
                         DWORD targetCursor = 0;
@@ -1385,10 +1400,10 @@ WinMain(HINSTANCE hInstance,
                         else
                         {
                             targetCursor = (writeCursor + expectedSoundBytesPerFrame +
-                                            soundOutput.safetyBytes);
+                                soundOutput.safetyBytes);
                         }
                         targetCursor = (targetCursor % soundOutput.secondaryBufferSize);
-                    
+
                         DWORD bytesToWrite = 0;
                         if(byteToLock > targetCursor)
                         {
@@ -1425,7 +1440,7 @@ WinMain(HINSTANCE hInstance,
                     {
                         if(isSleepGranular)
                         {
-                            
+
                             DWORD sleepMS = (DWORD)(1000.0f * (targetSecondsPerFrame - secondsElapsedForFrame));
                             if(sleepMS > 0)
                             {

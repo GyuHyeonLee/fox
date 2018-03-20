@@ -68,7 +68,6 @@ struct render_entry_basis
     v3 offset;
 };
 
-
 enum render_group_entry_type
 {
     RenderGroupEntryType_render_group_entry_clear,
