@@ -673,7 +673,7 @@ MoveEntity(game_state *gameState, sim_region *simRegion, sim_entity *entity,
     ddP *= moveSpec->speed;
 
     // TODO : ODE here
-w    ddP += -moveSpec->drag*entity->dPos;
+    ddP += -moveSpec->drag*entity->dPos;
 
     // Apply the gravity only if the entity is not on the ground
     if(!IsSet(entity, EntityFlag_ZSupported))

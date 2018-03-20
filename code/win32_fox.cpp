@@ -25,7 +25,7 @@ Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
     - Saved game location //Create temporary folder for debugging purpose?
     - Getting a handle to our own excutable file
     - Asset loading path
-    - Thrading (launch a thred)
+    - Threading (launch a thread)
     - Raw Input (support for multiple keyboards)
     - ClipCursor(multimonitor support)
     - QueryCancelAutoplay
@@ -34,7 +34,9 @@ Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
     - Hardware accelration (OpenGL or Direct3D or BOTH??)
     - GetKeyboadLayout (for French keyboard, international WASD support)
     = ChangeDisplaySetting option if we detect slow fullscreen blit??
+
     - OpenGL Stuff? How can we get that Opengl things widthen win32 playform layer?
+    - Resolution Change
 
     JUST A PARTIAL LIST OF STUFF!!
 *****/
@@ -1122,7 +1124,10 @@ WinMain(HINSTANCE hInstance,
             {
                 monitorRefreshHz = win32RefreshRate;
             }
+
+            // TODO : Make 60fps happen?
             int gameUpdateHz = monitorRefreshHz / 2;
+            
             real32 targetSecondsPerFrame = 1.0f / (real32)gameUpdateHz;
 
             // OpenGL
@@ -1494,7 +1499,8 @@ WinMain(HINSTANCE hInstance,
                     uint64 cyclesElapsed = endCycleCount - lastCycleCount;
                     lastCycleCount = endCycleCount;
 
-#if 0
+// Debug Cycle count!
+#if 1
                     real32 msPerFrame = (1000.0f * ((real32)counterElapsed / (real32)cyclesElapsed));
                     real32 fps = perfCountFrequency / (real32)counterElapsed;
                     real32 mcpf = ((real32)cyclesElapsed / (1000.0f * 1000.0f));
