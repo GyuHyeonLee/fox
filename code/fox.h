@@ -168,7 +168,6 @@ struct controlled_hero
     real32 dZ;
 };
 
-
 // This is an external hash!
 struct pairwise_collision_rule
 {
@@ -191,6 +190,39 @@ struct ground_buffer
     loaded_bitmap bitmap;
 };
 
+// NOTE : So that the user or me do not have to access directly to the memory
+// but instead use id. This is kinda encapsulation.
+enum game_asset_id
+{
+    GAI_Background,
+    GAI_Tree,
+    GAI_Shadow,
+    GAI_Stairwell,
+    GAI_Sword,
+
+    GAI_Count,
+};
+
+struct game_assets
+{
+    loaded_bitmap *bitmaps[GAI_Count];
+
+    // Arrayed bitmaps
+    loaded_bitmap grass[2];
+    loaded_bitmap stone[4];
+    loaded_bitmap tuft[3];
+
+    // Structured bitmaps
+    hero_bitmaps heroBitmaps[4];
+};
+
+loaded_bitmap *
+GetBitmap(game_assets *assets, game_asset_id id)
+{
+    loaded_bitmap *result = assets->bitmaps[id];
+    return result;
+}
+
 struct game_state
 {
     memory_arena worldArena;
@@ -206,19 +238,6 @@ struct game_state
 
     uint32 lowEntityCount;
     low_entity lowEntities[100000];
-
-    loaded_bitmap grass[2];
-    loaded_bitmap stone[4];
-    loaded_bitmap tuft[3];
-    
-    // Bitmaps
-    loaded_bitmap background;
-    loaded_bitmap tree;
-    loaded_bitmap shadow;
-    loaded_bitmap sword;    
-    loaded_bitmap stairwell;    
-
-    hero_bitmaps heroBitmaps[4];
 
     // TODO : Must be power of two!
     // NOTE : This is external hash table as we store pointers, not entries!
@@ -236,6 +255,7 @@ struct game_state
 
     real32 time;
 
+    // TODO : Get rid of this because diff will not be used..?
     loaded_bitmap diff;
     loaded_bitmap diffNormal;
 
@@ -253,6 +273,8 @@ struct transient_state
     int32 envMapHeight;
     // 1 : bottom ,2 : middle, 3 : top
     enviromnet_map envMaps[3];
+
+    game_assets assets;
 };
 
 #endif

@@ -1,4 +1,3 @@
-
 internal void
 OpenglRectangle(v2 minPos, v2 maxPos, v4 color)
 {

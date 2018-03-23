@@ -313,10 +313,10 @@ Unpack4x8(uint32 packed)
 // and the heightMax because we are doing some hackish things above.
         if(maxX > widthMax)
         {
-         maxX = widthMax;
-     }
-     if(maxY > heightMax)
-     {
+           maxX = widthMax;
+       }
+       if(maxY > heightMax)
+       {
         maxY = heightMax;
     }
 
@@ -381,7 +381,7 @@ Unpack4x8(uint32 packed)
 
             // For now, we are going 4 for each x OUTSIDE the loop, so we have to manually put the values!
             __m128 pixelPosx =
-                _mm_set_ps((real32)(xi + 3), 
+            _mm_set_ps((real32)(xi + 3), 
                 (real32)(xi + 2),
                 (real32)(xi + 1),
                 (real32)(xi + 0));
@@ -400,7 +400,7 @@ Unpack4x8(uint32 packed)
                 i < 4;
                 ++i)
             {
-                    shouldFill[i] = ((GetValue(u, i) >= 0.0f) && (GetValue(u, i) <= 1.0f) && 
+                shouldFill[i] = ((GetValue(u, i) >= 0.0f) && (GetValue(u, i) <= 1.0f) && 
                     (GetValue(v, i) >= 0.0f) && (GetValue(v, i) <= 1.0f));
                 // We can test whether the pixel is inside the texture or not with this test
                 if(shouldFill[i])
@@ -956,7 +956,7 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
     }
 
     internal render_group *
-    AllocateRenderGroup(memory_arena *arena, uint32 maxPushBufferSize, uint32 resolutionX, uint32 resolutionY)
+    AllocateRenderGroup(game_assets *assets, memory_arena *arena, uint32 maxPushBufferSize, uint32 resolutionX, uint32 resolutionY)
     {
         render_group *result = PushStruct(arena, render_group);
         result->pushBufferBase = (uint8 *)PushSize(arena, maxPushBufferSize);
@@ -973,6 +973,7 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
         result->renderCamera = result->gameCamera;
     // result->renderCamera.distanceAboveTarget = 30.0f;
 
+        result->assets = assets;
     // TODO : Probably indicates we want to seperate update and render
     // for entities sometime?
         result->globalAlpha = 1.0f;
@@ -1030,6 +1031,18 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
             piece->entryBasis.offset = offset - V3(align, 0);
             piece->color = group->globalAlpha*color;
             piece->size = size;
+        }
+    }
+
+    inline void
+    PushBitmap(render_group *group, game_asset_id id, real32 heightInMeters, v3 offset, v4 color = V4(1, 1, 1, 1))
+    {
+        loaded_bitmap *bitmap = GetBitmap(group->assets, id);
+        // Only draw if we have the bitmap
+        // Don't slow down the framerate while waiting the asset to be loaded!
+        if(bitmap)
+        {
+            PushBitmap(group, bitmap, heightInMeters, offset, color);
         }
     }
 

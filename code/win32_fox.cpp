@@ -1,9 +1,7 @@
 /******************************************************************************
-File:   win32_projecth.cpp
+File:   win32_fox.cpp
 Author: GyuHyeon Lee
-Email:  email: evulstudio@gmail.com
-Date:   24/05/2017
-Info:   This contains windows platform layer.
+Email:  email: weanother@gmail.com
 
 Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
 ******************************************************************************/
@@ -30,11 +28,10 @@ Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
     - ClipCursor(multimonitor support)
     - QueryCancelAutoplay
     - WM_ACTIVATEAPP (for when we are not the active application)
-    - Blit speed improvements (bitblt)
-    - Hardware accelration (OpenGL or Direct3D or BOTH??)
     - GetKeyboadLayout (for French keyboard, international WASD support)
     = ChangeDisplaySetting option if we detect slow fullscreen blit??
 
+    - Hardware accelration (OpenGL or Direct3D or BOTH??)
     - OpenGL Stuff? How can we get that Opengl things widthen win32 playform layer?
     - Resolution Change
 

@@ -32,11 +32,6 @@ extern "C" {
     #pragma intrinsic(_BitScanForward)
 #endif
 
-//
-// NOTE : 
-//
-
-
 #include <stdint.h>
 #include <stddef.h>
 #include <limits.h>
@@ -67,6 +62,86 @@ typedef double real64;
 #define ArrayCount(array) (sizeof(array) / sizeof((array)[0]))
 
 #define Pi32 3.14159265359f
+
+// TODO : Move this v2 math to the platfrom layer!
+union v2
+{
+    struct
+    {
+        real32 x, y;
+    };
+    real32 e[2];
+};
+
+union v3
+{
+    struct
+    {
+        real32 x, y, z;
+    };
+    struct
+    {
+        real32 r, g, b;
+    };
+    struct
+    {
+        v2 xy;
+        real32 ignored0_;
+    };
+    real32 e[3];
+};
+
+union v4
+{
+    struct
+    {
+        real32 x, y, z, w;
+    };
+    struct
+    {
+        union
+        {
+            v3 xyz;
+            struct
+            {
+                real32 x, y, z;
+            };
+        };
+        real32 w;
+    };
+    struct
+    {
+        union
+        {
+            v3 rgb;
+            struct
+            {
+                real32 r, g, b;
+            };
+        };
+        real32 a;
+    };
+    struct
+    {
+        v2 xy;
+        real32 ignored0_;
+        real32 ignored1_;
+    };
+    struct
+    {
+        real32 ignored2_;        
+        v2 yz;
+        real32 ignored3_;
+    };
+    struct
+    {
+        real32 ignored4_;
+        real32 ignored5_;
+        v2 zw;
+    };
+    
+    real32 e[4];
+};
 
 #if FOX_SLOW
     #define Assert(expression) if(!(expression)) {*(int *)0 = 0;}

@@ -198,6 +198,43 @@ DEBUGLoadBMP(thread_context *thread, debug_platform_read_entire_file *readEntire
     return result;
 }
 
+// Load bitmap after allocating the space for it.
+internal loaded_bitmap *
+DEBUGAllocateAndLoadBitmap(transient_state *tranState, thread_context *thread,
+                         debug_platform_read_entire_file *readEntireFile, char *fileName,
+                        int32 alignX, int32 topDownAlignY)
+{
+   loaded_bitmap *result = PushStruct(&tranState->tranArena, loaded_bitmap);
+   *result = DEBUGLoadBMP(thread, readEntireFile, fileName, alignX, topDownAlignY); 
+
+   return result;
+}
+
+internal loaded_bitmap *
+DEBUGAllocateAndLoadBitmap(transient_state *tranState, thread_context *thread,
+                         debug_platform_read_entire_file *readEntireFile, char *fileName)
+{
+   loaded_bitmap *result = PushStruct(&tranState->tranArena, loaded_bitmap);
+   *result = DEBUGLoadBMP(thread, readEntireFile, fileName); 
+
+   return result;
+}
+
+internal void
+LoadAssets(transient_state *tranState, game_assets *assets, thread_context *thread, debug_platform_read_entire_file *readEntireFile)
+{
+    assets->bitmaps[GAI_Background] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+                                                            "../fox/data/test/test_background.bmp");
+    assets->bitmaps[GAI_Tree] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+                                            "../fox/data/test2/tree00.bmp", 40, 80);                                            
+    assets->bitmaps[GAI_Shadow] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+                                            "../fox/data/test/test_hero_shadow.bmp", 72, 182);                                            
+    assets->bitmaps[GAI_Sword] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+                                            "../fox/data/test2/rock03.bmp", 29, 10);                                            
+    assets->bitmaps[GAI_Stairwell] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+                                            "../fox/data/test2/rock03.bmp");                                            
+}
+
 // TODO : This is only for the world building! Remove it completely later.
 inline world_position
 TilePositionToChunkPosition(world *world, int32 absTileX, int32 absTileY, int32 absTileZ, 
@@ -445,7 +482,7 @@ FillGroundChunks(transient_state *tranState, game_state *gameState,
     // TODO : How do we want to control our ground chunk resolution?
     // TODO : Find out what is the precies maxPushBufferSize is!
     render_group *groundRenderGroup = 
-        AllocateRenderGroup(&tranState->tranArena, Megabytes(4), groundBuffer->bitmap.width, groundBuffer->bitmap.height);
+        AllocateRenderGroup(&tranState->assets, &tranState->tranArena, Megabytes(4), groundBuffer->bitmap.width, groundBuffer->bitmap.height);
 
     Clear(groundRenderGroup, V4(0.2f, 0.2f, 0.2f, 1.0f));
 
@@ -698,79 +735,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                                                                 tilesPerHeight * tileSideInMeters, 
                                                                 0.9f*tileDeptInMeters);  
 
-
-        gameState->grass[0] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/grass00.bmp");
-        gameState->grass[1] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/grass01.bmp");
-
-        gameState->stone[0] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/ground00.bmp");
-        gameState->stone[1] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/ground01.bmp");
-        gameState->stone[2] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/ground02.bmp");
-        gameState->stone[3] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/ground03.bmp");
-                            
-        gameState->tuft[0] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/tuft00.bmp");
-        gameState->tuft[1] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/tuft01.bmp");
-        gameState->tuft[2] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test2/tuft02.bmp");
-                            
-                             
-
-        gameState->background = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_background.bmp");
-        gameState->tree = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                        "../fox/data/test2/tree00.bmp", 40, 80);                                            
-        gameState->shadow = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                        "../fox/data/test/test_hero_shadow.bmp", 72, 182);                                            
-        gameState->sword = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                        "../fox/data/test2/rock03.bmp", 29, 10);                                            
-        gameState->stairwell = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                        "../fox/data/test2/rock03.bmp");                                            
-            
-                                            
-
-        hero_bitmaps *bitmap = gameState->heroBitmaps;
-        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_right_head.bmp");
-        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_right_cape.bmp");
-        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_right_torso.bmp");
-        SetHeroBitmapAlign(bitmap, V2(72, 182));
-        bitmap++;
-
-        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_back_head.bmp");
-        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_back_cape.bmp");
-        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_back_torso.bmp");
-        SetHeroBitmapAlign(bitmap, V2(72, 182));
-        bitmap++;
-
-        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_left_head.bmp");
-        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_left_cape.bmp");
-        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_left_torso.bmp");
-        SetHeroBitmapAlign(bitmap, V2(72, 182));
-        bitmap++;
-
-        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_front_head.bmp");
-        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_front_cape.bmp");
-        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
-                                            "../fox/data/test/test_hero_front_torso.bmp");
-        SetHeroBitmapAlign(bitmap, V2(72, 182));
-        
         // (0, 0, 0) is the center of the world!!
         // becauseit's int
         uint32 screenBaseX = 0;
@@ -966,17 +930,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             groundBuffer->bitmap = MakeEmptyBitmap(&tranState->tranArena, groundBufferWidth, groundBufferHeight, false);
             groundBuffer->pos = NullPosition();
         }
-
-        // FillGroundChunks(tranState, gameState, &tranState->groundBuffers[0], &gameState->cameraPos);
-        
-        gameState->diff = MakeEmptyBitmap(&tranState->tranArena, gameState->tree.width, gameState->tree.height, false);
-        
-        gameState->diffNormal = MakeEmptyBitmap(&tranState->tranArena, gameState->diff.width, gameState->diff.height, false);
-        MakeSphereNormalMap(&gameState->diffNormal, 0.0f);
-        MakeSphereDiffuseMap(&gameState->diff);
-        
-        tranState->envMapWidth = 512;
-        tranState->envMapHeight = 256;
         
         for(int32 mapIndex = 0;
             mapIndex < ArrayCount(tranState->envMaps);
@@ -996,6 +949,64 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             }
         }
         
+        tranState->assets.grass[0] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/grass00.bmp");
+        tranState->assets.grass[1] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/grass01.bmp");
+
+        tranState->assets.stone[0] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/ground00.bmp");
+        tranState->assets.stone[1] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/ground01.bmp");
+        tranState->assets.stone[2] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/ground02.bmp");
+        tranState->assets.stone[3] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/ground03.bmp");
+                            
+        tranState->assets.tuft[0] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/tuft00.bmp");
+        tranState->assets.tuft[1] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/tuft01.bmp");
+        tranState->assets.tuft[2] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test2/tuft02.bmp");
+                            
+        LoadAssets(tranState, &tranState->assets, thread, memory->debugPlatformReadEntireFile);
+
+        hero_bitmaps *bitmap = tranState->assets.heroBitmaps;
+        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_right_head.bmp");
+        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_right_cape.bmp");
+        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_right_torso.bmp");
+        SetHeroBitmapAlign(bitmap, V2(72, 182));
+        bitmap++;
+
+        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_back_head.bmp");
+        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_back_cape.bmp");
+        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_back_torso.bmp");
+        SetHeroBitmapAlign(bitmap, V2(72, 182));
+        bitmap++;
+
+        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_left_head.bmp");
+        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_left_cape.bmp");
+        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_left_torso.bmp");
+        SetHeroBitmapAlign(bitmap, V2(72, 182));
+        bitmap++;
+
+        bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_front_head.bmp");
+        bitmap->cape = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_front_cape.bmp");
+        bitmap->torso = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
+                                            "../fox/data/test/test_hero_front_torso.bmp");
+        SetHeroBitmapAlign(bitmap, V2(72, 182));
         tranState->isInitialized = true;
     }
 
@@ -1089,7 +1100,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     drawBuffer->memory = buffer->memory;
 
     // TODO : Find out what is the precies maxPushBufferSize is!
-    render_group *renderGroup = AllocateRenderGroup(&tranState->tranArena, Megabytes(4), drawBuffer->width, drawBuffer->height);
+    render_group *renderGroup = AllocateRenderGroup(&tranState->assets, &tranState->tranArena, Megabytes(4), drawBuffer->width, drawBuffer->height);
 
     // Clear the buffer!
     Clear(renderGroup, V4(0.7f, 0.7f, 0.7f, 0));
@@ -1251,7 +1262,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
             // in pushpiece call.
             renderGroup->defaultBasis = basis;
             
-            hero_bitmaps *heroBitmaps = &gameState->heroBitmaps[entity->facingDirection];
+            hero_bitmaps *heroBitmaps = &tranState->assets.heroBitmaps[entity->facingDirection];
 
             v3 cameraRelativeGroundPos = GetEntityGroundPoint(entity) - cameraPos;
             // NOTE : This is written in Z order
@@ -1317,7 +1328,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
                     real32 heroSizeC = 2.0f;
 
-                    PushBitmap(renderGroup, &gameState->shadow, 0.5f, V3(0, 0, 0), V4(1, 1, 1, shadowAlpha));                
                     PushBitmap(renderGroup, &heroBitmaps->torso, heroSizeC*1.4f, V3(0, 0, 0));
                     PushBitmap(renderGroup, &heroBitmaps->cape, heroSizeC*1.4f, V3(0, 0, 0));                
                     PushBitmap(renderGroup, &heroBitmaps->head, heroSizeC*1.4f, V3(0, 0, 0));
@@ -1339,15 +1349,13 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         ClearCollisionRulesFor(gameState, entity->storageIndex);
                     }
 
-                    PushBitmap(renderGroup, &gameState->shadow, 1.4f, V3(0, 0, 0), V4(1, 1, 1, shadowAlpha));
-                    PushBitmap(renderGroup, &gameState->sword, 1.4f, V3(0, 0, 0));
+                    PushBitmap(renderGroup, GAI_Sword, 0.4f, V3(0, 0, 0));
                     
                 }break;
 
                 case EntityType_Wall:
                 {
-                    PushBitmap(renderGroup, &gameState->shadow, 2.5f, V3(0, 0, 0), V4(1, 1, 1, shadowAlpha));                
-                    PushBitmap(renderGroup, &gameState->tree, 2.5f, V3(0, 0, 0));
+                    PushBitmap(renderGroup, GAI_Tree, 2.5f, V3(0, 0, 0));
                 }break;
 
                 case EntityType_Monster:

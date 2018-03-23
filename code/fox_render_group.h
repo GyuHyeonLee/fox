@@ -136,6 +136,7 @@ struct render_group_camera
 
 struct render_group
 {
+    struct game_assets *assets;
     // The actual camera
     render_group_camera gameCamera;
     // The camera that the render is thinking
