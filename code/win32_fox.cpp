@@ -1035,6 +1035,19 @@ HandleDebugCycleCounter(game_memory *gameMemory)
 #endif
 }
 
+DWORD WINAPI 
+ThreadProc(LPVOID lpParameter)
+{
+    char *stringToPrint = (char *)lpParameter;
+
+    for(;;)
+    {
+        OutputDebugStringA(stringToPrint);
+        Sleep(1000);
+    }
+
+    // return 0;
+}
 
 int CALLBACK 
 WinMain(HINSTANCE hInstance,
@@ -1042,6 +1055,14 @@ WinMain(HINSTANCE hInstance,
     LPSTR lpCmdLine,
     int nCmdShow)
 {
+    char *param = "Thread Started!\n";
+
+    DWORD threadID;
+    HANDLE threadHandle = CreateThread(0, 0, ThreadProc, param, 0, &threadID);
+    // Close handle does not actually close the thread entirely.. it returns the thread to the OS.
+    // The end of WinMain will actually call the ExitProcess, which actually shuts down all the threads.
+    CloseHandle(threadHandle);
+
     //Because the frequency doesn't change, we can just compute here.
     LARGE_INTEGER perfCountFreqResult;
     QueryPerformanceFrequency(&perfCountFreqResult);

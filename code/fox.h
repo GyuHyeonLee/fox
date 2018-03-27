@@ -138,6 +138,9 @@ GetAlignmentOffset(memory_arena *arena, memory_index alignment)
 inline memory_index
 GetArenaRemainingSize(memory_arena * arena, memory_index alignment=4)
 {
+    // Get the remaining size CONSIDERING the alignment.
+    // For example, if there is 1 byte left, we cannot use it and start
+    // after 1 byte because of the alignment.
     memory_index result = arena->size - 
         (arena->used + GetAlignmentOffset(arena, alignment));
     return result;
