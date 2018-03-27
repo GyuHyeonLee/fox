@@ -973,6 +973,7 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
         result->renderCamera = result->gameCamera;
     // result->renderCamera.distanceAboveTarget = 30.0f;
 
+        // Rendergroup should know which asset to use!
         result->assets = assets;
     // TODO : Probably indicates we want to seperate update and render
     // for entities sometime?
@@ -1043,6 +1044,10 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
         if(bitmap)
         {
             PushBitmap(group, bitmap, heightInMeters, offset, color);
+        }
+        else
+        {
+            LoadAsset(group->assets, id);
         }
     }
 

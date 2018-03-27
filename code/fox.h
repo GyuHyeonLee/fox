@@ -58,7 +58,8 @@
 #define Minimum(a, b) ((a < b) ? a : b)
 #define Maximum(a, b) ((a > b)? a : b)
 
-//TODO: Implement sine ourselves because sine is pretty expensive because of precision purpose
+//TODO: Implement sine ourselves because sine is pretty 
+// expensive because of precision purpose
 #include <math.h>
 
 struct memory_arena
@@ -80,6 +81,7 @@ inline void
 InitializeArena(memory_arena *arena, memory_index size, void *base)
 {
     arena->size = size;
+    // Base is the start of the memory
     arena->base = (uint8 *)base;
     arena->used = 0;
     arena->tempCount = 0;
@@ -113,18 +115,62 @@ CheckArena(memory_arena *arena)
     Assert(arena->tempCount == 0);
 }
 
+// NOTE : How much should I go to align by alignment?
+inline memory_index
+GetAlignmentOffset(memory_arena *arena, memory_index alignment)
+{
+    memory_index result = 0;
+
+    memory_index resultPointer = (memory_index)arena->base + arena->used;
+    memory_index alignmentMask = alignment - 1;
+    // If I & this and the result is 0, it means theres no
+    // 0th and 1th bit - which means aligned.
+    // Otherwise, it is now aligned, so we should move the pointer 
+    // by result to be aligned.
+    if(resultPointer & alignmentMask)
+    {
+        result = alignment - (resultPointer & alignmentMask);
+    }
+
+    return result;
+}
+ 
+inline memory_index
+GetArenaRemainingSize(memory_arena * arena, memory_index alignment=4)
+{
+    memory_index result = arena->size - 
+        (arena->used + GetAlignmentOffset(arena, alignment));
+    return result;
+}
+
 #define PushStruct(Arena, type) (type *)PushSize_(Arena, sizeof(type))
 #define PushArray(Arena, count, type) (type *)PushSize_(Arena, count * sizeof(type))
 #define PushSize(Arena, size) PushSize_(Arena, size)
 
 inline void *
-PushSize_(memory_arena *arena, memory_index size)
+PushSize_(memory_arena *arena, memory_index sizeInit, memory_index alignment = 4)
 {
+    memory_index size = sizeInit;
+
+    memory_index alignmentOffset = GetAlignmentOffset(arena, alignment);
+    size += alignmentOffset;
+
     Assert(arena->used + size <= arena->size);
     void *result = arena->base + arena->used;
     arena->used += size;
 
+    Assert(size >= sizeInit);
+
     return result;
+}
+
+inline void
+SubArena(memory_arena *result, memory_arena *arena, memory_index size, memory_index alignment = 16)
+{
+    result->size = size;
+    result->base = (uint8 *)PushSize_(arena, size, alignment);
+    result->used = 0;
+    result->tempCount = 0;
 }
 
 #define ZeroStruct(instance) ZeroSize(sizeof(instance), &(instance))
@@ -205,6 +251,8 @@ enum game_asset_id
 
 struct game_assets
 {
+    memory_arena arena;
+    debug_platform_read_entire_file *readEntireFile;
     loaded_bitmap *bitmaps[GAI_Count];
 
     // Arrayed bitmaps
@@ -225,6 +273,7 @@ GetBitmap(game_assets *assets, game_asset_id id)
 
 struct game_state
 {
+    // What is this arena for?
     memory_arena worldArena;
     world *world;
     
@@ -276,5 +325,8 @@ struct transient_state
 
     game_assets assets;
 };
+
+// These functions should be called externally
+internal void LoadAsset(game_assets *assets, game_asset_id id);
 
 #endif

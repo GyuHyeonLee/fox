@@ -200,39 +200,58 @@ DEBUGLoadBMP(thread_context *thread, debug_platform_read_entire_file *readEntire
 
 // Load bitmap after allocating the space for it.
 internal loaded_bitmap *
-DEBUGAllocateAndLoadBitmap(transient_state *tranState, thread_context *thread,
+DEBUGAllocateAndLoadBitmap(memory_arena *arena, thread_context *thread,
                          debug_platform_read_entire_file *readEntireFile, char *fileName,
                         int32 alignX, int32 topDownAlignY)
 {
-   loaded_bitmap *result = PushStruct(&tranState->tranArena, loaded_bitmap);
+   loaded_bitmap *result = PushStruct(arena, loaded_bitmap);
    *result = DEBUGLoadBMP(thread, readEntireFile, fileName, alignX, topDownAlignY); 
 
    return result;
 }
 
 internal loaded_bitmap *
-DEBUGAllocateAndLoadBitmap(transient_state *tranState, thread_context *thread,
+DEBUGAllocateAndLoadBitmap(memory_arena *arena, thread_context *thread,
                          debug_platform_read_entire_file *readEntireFile, char *fileName)
 {
-   loaded_bitmap *result = PushStruct(&tranState->tranArena, loaded_bitmap);
+   loaded_bitmap *result = PushStruct(arena, loaded_bitmap);
    *result = DEBUGLoadBMP(thread, readEntireFile, fileName); 
 
    return result;
 }
 
 internal void
-LoadAssets(transient_state *tranState, game_assets *assets, thread_context *thread, debug_platform_read_entire_file *readEntireFile)
+LoadAsset(game_assets *assets, game_asset_id id)
 {
-    assets->bitmaps[GAI_Background] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+    thread_context *thread = 0;
+    switch(id)
+    {
+        case GAI_Background:
+        {
+            assets->bitmaps[GAI_Background] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                                             "../fox/data/test/test_background.bmp");
-    assets->bitmaps[GAI_Tree] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+        }break;
+        case GAI_Tree:
+        {
+            assets->bitmaps[GAI_Tree] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test2/tree00.bmp", 40, 80);                                            
-    assets->bitmaps[GAI_Shadow] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+        }
+        case GAI_Shadow:
+        {
+            assets->bitmaps[GAI_Shadow] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test/test_hero_shadow.bmp", 72, 182);                                            
-    assets->bitmaps[GAI_Sword] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+        }
+        case GAI_Sword:
+        {
+            assets->bitmaps[GAI_Sword] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test2/rock03.bmp", 29, 10);                                            
-    assets->bitmaps[GAI_Stairwell] = DEBUGAllocateAndLoadBitmap(tranState, thread, readEntireFile, 
+        }
+        case GAI_Stairwell:
+        {
+            assets->bitmaps[GAI_Stairwell] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test2/rock03.bmp");                                            
+        }
+    }
 }
 
 // TODO : This is only for the world building! Remove it completely later.
@@ -696,6 +715,7 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
     {
         // TODO : Talk about this soon!  Let's start partitioning our memory space!
         InitializeArena(&gameState->worldArena, 
+                        // world arena 
                         (memory_index)(memory->permanentStorageSize - sizeof(game_state)),
                         (uint8 *)memory->permanentStorage + sizeof(game_state));
 
@@ -918,6 +938,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                         (memory_index)(memory->transientStorageSize - sizeof(transient_state)),
                         (uint8 *)memory->transientStorage + sizeof(transient_state));                
 
+        SubArena(&tranState->assets.arena, &tranState->tranArena, Megabytes(64));
+        tranState->assets.readEntireFile = memory->debugPlatformReadEntireFile;
+        LoadAsset(&tranState->assets, GAI_Tree);
+
         tranState->groundBufferCount = 64;
         tranState->groundBuffers = 
             PushArray(&tranState->tranArena, tranState->groundBufferCount, ground_buffer);
@@ -970,8 +994,6 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         tranState->assets.tuft[2] = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
                                             "../fox/data/test2/tuft02.bmp");
                             
-        LoadAssets(tranState, &tranState->assets, thread, memory->debugPlatformReadEntireFile);
-
         hero_bitmaps *bitmap = tranState->assets.heroBitmaps;
         bitmap->head = DEBUGLoadBMP(thread, memory->debugPlatformReadEntireFile, 
                                             "../fox/data/test/test_hero_right_head.bmp");
