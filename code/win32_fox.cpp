@@ -1035,15 +1035,42 @@ HandleDebugCycleCounter(game_memory *gameMemory)
 #endif
 }
 
+struct work_queue_entry
+{
+    char *stringToPrint;
+};
+
+global_variable uint32 nextEntryToDo;
+global_variable uint32 entryIndexCount;
+work_queue_entry entries[256];
+
+internal void
+PushStringWorkToThread(char *string)
+{
+    work_queue_entry *entry = entries + entryIndexCount++;
+    entry->stringToPrint = string;
+}
+
+struct win32_thread_info
+{
+    int32 logicalThreadIndex;
+};
+
 DWORD WINAPI 
 ThreadProc(LPVOID lpParameter)
 {
-    char *stringToPrint = (char *)lpParameter;
+    win32_thread_info *info = (win32_thread_info *)lpParameter;  
 
     for(;;)
     {
-        OutputDebugStringA(stringToPrint);
-        Sleep(1000);
+        if(nextEntryToDo < entryIndexCount)
+        {
+            work_queue_entry *entry = entries + nextEntryToDo++;
+
+            char buffer[256];
+            sprintf_s(buffer, "%s\n", entry->stringToPrint);
+            OutputDebugStringA(buffer);
+        }
     }
 
     // return 0;
@@ -1055,13 +1082,34 @@ WinMain(HINSTANCE hInstance,
     LPSTR lpCmdLine,
     int nCmdShow)
 {
-    char *param = "Thread Started!\n";
+    win32_thread_info threadInfos[12] = {};
 
-    DWORD threadID;
-    HANDLE threadHandle = CreateThread(0, 0, ThreadProc, param, 0, &threadID);
-    // Close handle does not actually close the thread entirely.. it returns the thread to the OS.
-    // The end of WinMain will actually call the ExitProcess, which actually shuts down all the threads.
-    CloseHandle(threadHandle);
+    for(uint32 threadIndex = 0;
+        threadIndex < ArrayCount(threadInfos);
+        ++threadIndex)
+    {
+        win32_thread_info *param = threadInfos + threadIndex;
+        param->logicalThreadIndex = threadIndex;
+
+        // Just a placeholder
+        DWORD threadID;
+        HANDLE threadHandle = CreateThread(0, 0, ThreadProc, (LPVOID)param, 0, &threadID);
+        // Close handle does not actually close the thread entirely.. it returns the thread to the OS.
+        // The end of WinMain will actually call the ExitProcess, which actually shuts down all the threads.
+        CloseHandle(threadHandle);
+    }
+
+    // Push string so that the threads have work to do.
+    PushStringWorkToThread("string 0");
+    PushStringWorkToThread("string 1");
+    PushStringWorkToThread("string 2");
+    PushStringWorkToThread("string 3");
+    PushStringWorkToThread("string 4");
+    PushStringWorkToThread("string 5");
+    PushStringWorkToThread("string 6");
+    PushStringWorkToThread("string 7");
+    PushStringWorkToThread("string 8");
+    PushStringWorkToThread("string 9");
 
     //Because the frequency doesn't change, we can just compute here.
     LARGE_INTEGER perfCountFreqResult;
