@@ -1039,6 +1039,7 @@ DrawSomethingSlowly(loaded_bitmap *buffer, v2 origin, v2 xAxis, v2 yAxis, v4 col
     PushBitmap(render_group *group, game_asset_id id, real32 heightInMeters, v3 offset, v4 color = V4(1, 1, 1, 1))
     {
         loaded_bitmap *bitmap = GetBitmap(group->assets, id);
+        
         // Only draw if we have the bitmap
         // Don't slow down the framerate while waiting the asset to be loaded!
         if(bitmap)

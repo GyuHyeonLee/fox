@@ -1035,6 +1035,9 @@ HandleDebugCycleCounter(game_memory *gameMemory)
 #endif
 }
 
+#define CompletePastWritesBeforeFutureWrites _WriteBarrier(); _mm_sfence() 
+#define CompletePastReadsBeforeFutureReads _ReadBarrier()
+
 struct work_queue_entry
 {
     char *stringToPrint;
@@ -1047,8 +1050,12 @@ work_queue_entry entries[256];
 internal void
 PushStringWorkToThread(char *string)
 {
-    work_queue_entry *entry = entries + entryIndexCount++;
+    work_queue_entry *entry = entries + entryIndexCount;
     entry->stringToPrint = string;
+
+    CompletePastWritesBeforeFutureWrites;
+
+    entryIndexCount++;
 }
 
 struct win32_thread_info
@@ -1082,18 +1089,19 @@ WinMain(HINSTANCE hInstance,
     LPSTR lpCmdLine,
     int nCmdShow)
 {
+    #if 0
     win32_thread_info threadInfos[12] = {};
 
     for(uint32 threadIndex = 0;
         threadIndex < ArrayCount(threadInfos);
         ++threadIndex)
     {
-        win32_thread_info *param = threadInfos + threadIndex;
-        param->logicalThreadIndex = threadIndex;
+        win32_thread_info *info = threadInfos + threadIndex;
+        info->logicalThreadIndex = threadIndex;
 
         // Just a placeholder
         DWORD threadID;
-        HANDLE threadHandle = CreateThread(0, 0, ThreadProc, (LPVOID)param, 0, &threadID);
+        HANDLE threadHandle = CreateThread(0, 0, ThreadProc, (LPVOID)info, 0, &threadID);
         // Close handle does not actually close the thread entirely.. it returns the thread to the OS.
         // The end of WinMain will actually call the ExitProcess, which actually shuts down all the threads.
         CloseHandle(threadHandle);
@@ -1111,6 +1119,7 @@ WinMain(HINSTANCE hInstance,
     PushStringWorkToThread("string 8");
     PushStringWorkToThread("string 9");
 
+#endif
     //Because the frequency doesn't change, we can just compute here.
     LARGE_INTEGER perfCountFreqResult;
     QueryPerformanceFrequency(&perfCountFreqResult);

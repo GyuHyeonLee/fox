@@ -235,22 +235,22 @@ LoadAsset(game_assets *assets, game_asset_id id)
         {
             assets->bitmaps[GAI_Tree] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test2/tree00.bmp", 40, 80);                                            
-        }
+        }break;
         case GAI_Shadow:
         {
             assets->bitmaps[GAI_Shadow] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test/test_hero_shadow.bmp", 72, 182);                                            
-        }
+        }break;
         case GAI_Sword:
         {
             assets->bitmaps[GAI_Sword] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test2/rock03.bmp", 29, 10);                                            
-        }
+        }break;
         case GAI_Stairwell:
         {
             assets->bitmaps[GAI_Stairwell] = DEBUGAllocateAndLoadBitmap(&assets->arena, thread, assets->readEntireFile, 
                                             "../fox/data/test2/rock03.bmp");                                            
-        }
+        }break;
     }
 }
 
@@ -727,8 +727,8 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
                             pixelsToMeters*groundBufferHeight,
                             gameState->typicalFloorHeight));
 
-        uint32 tilesPerWidth = 17;
-        uint32 tilesPerHeight = 9;
+        uint32 tilesPerWidth = 10;
+        uint32 tilesPerHeight = 10;
 
         real32 tileSideInMeters = 1.4f;
         real32 tileDeptInMeters = 3.0f;
@@ -778,9 +778,10 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
         bool32 zDoorCreated = false;
         
         random_series series = Seed(321);
+        
         // For now, one screen is worth one room
         for(uint32 screenIndex = 0;
-            screenIndex < 2;
+            screenIndex < 1;
             ++screenIndex)
         {
             uint32 doorDirection = RandomChoice(&series, (doorUp || doorDown) ? 2 : 3);
@@ -828,22 +829,22 @@ extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 
                     uint32 shouldBeDoor = false;
 
-                    if(tileX == 0 && (!doorLeft || (tileY != (tilesPerHeight / 2))))
+                    if(tileX == 0 && ((tileY != (tilesPerHeight / 2))))
                     {
                         shouldBeDoor = true;
                     }
 
-                    if(tileX == tilesPerWidth - 1 && (!doorRight || tileY != tilesPerHeight / 2))
+                    if(tileX == tilesPerWidth - 1 && (tileY != tilesPerHeight / 2))
                     {
                         shouldBeDoor = true;
                     }
 
-                    if(tileY == 0 && (!doorBottom || tileX != tilesPerWidth / 2))
+                    if(tileY == 0 && (tileX != tilesPerWidth / 2))
                     {
                         shouldBeDoor = true;
                     } 
                     
-                    if(tileY == tilesPerHeight - 1 && (!doorTop || tileX != tilesPerWidth / 2))
+                    if(tileY == tilesPerHeight - 1 && (tileX != tilesPerWidth / 2))
                     {
                         shouldBeDoor = true;
                     }
