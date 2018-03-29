@@ -1043,24 +1043,29 @@ struct work_queue_entry
     char *stringToPrint;
 };
 
-global_variable uint32 nextEntryToDo;
-global_variable uint32 entryIndexCount;
+global_variable uint32 volatile entryCompletionCount;
+global_variable uint32 volatile nextEntryToDo;
+global_variable uint32 volatile entryCount;
 work_queue_entry entries[256];
 
 internal void
-PushStringWorkToThread(char *string)
+PushStringWorkToThread(HANDLE semaphoreHandle, char *string)
 {
-    work_queue_entry *entry = entries + entryIndexCount;
+    work_queue_entry *entry = entries + entryCount;
     entry->stringToPrint = string;
 
     CompletePastWritesBeforeFutureWrites;
 
-    entryIndexCount++;
+    entryCount++;
+
+    // Try to wake up the threads by incrementing the count by 1
+    ReleaseSemaphore(semaphoreHandle, 1, NULL);
 }
 
 struct win32_thread_info
 {
-    int32 logicalThreadIndex;
+    HANDLE semaphoreHandle;
+    int logicalThreadIndex;
 };
 
 DWORD WINAPI 
@@ -1070,13 +1075,22 @@ ThreadProc(LPVOID lpParameter)
 
     for(;;)
     {
-        if(nextEntryToDo < entryIndexCount)
+        if(nextEntryToDo < entryCount)
         {
-            work_queue_entry *entry = entries + nextEntryToDo++;
+            int entryIndex = InterlockedIncrement((LONG volatile *)&nextEntryToDo) - 1;
+            CompletePastReadsBeforeFutureReads;
+            work_queue_entry *entry = entries + entryIndex;
 
             char buffer[256];
-            sprintf_s(buffer, "%s\n", entry->stringToPrint);
+            wsprintf(buffer, "thread : %u, %s\n", info->logicalThreadIndex, entry->stringToPrint);
             OutputDebugStringA(buffer);
+
+            InterlockedIncrement((LONG volatile *)&entryCompletionCount);
+        }
+        else
+        {
+            // Whenever the thread wakes up, it will decrement the semaphore by 1
+            WaitForSingleObjectEx(info->semaphoreHandle, INFINITE, false);
         }
     }
 
@@ -1089,15 +1103,19 @@ WinMain(HINSTANCE hInstance,
     LPSTR lpCmdLine,
     int nCmdShow)
 {
-    #if 0
-    win32_thread_info threadInfos[12] = {};
+    #if 1
+    win32_thread_info threadInfos[8] = {};
+    uint32 threadCount = ArrayCount(threadInfos);
+
+    HANDLE semaphoreHandle = CreateSemaphoreEx(0, 0, threadCount, 0, 0, SEMAPHORE_ALL_ACCESS); 
 
     for(uint32 threadIndex = 0;
-        threadIndex < ArrayCount(threadInfos);
+        threadIndex < threadCount;
         ++threadIndex)
     {
         win32_thread_info *info = threadInfos + threadIndex;
         info->logicalThreadIndex = threadIndex;
+        info->semaphoreHandle = semaphoreHandle;
 
         // Just a placeholder
         DWORD threadID;
@@ -1108,16 +1126,18 @@ WinMain(HINSTANCE hInstance,
     }
 
     // Push string so that the threads have work to do.
-    PushStringWorkToThread("string 0");
-    PushStringWorkToThread("string 1");
-    PushStringWorkToThread("string 2");
-    PushStringWorkToThread("string 3");
-    PushStringWorkToThread("string 4");
-    PushStringWorkToThread("string 5");
-    PushStringWorkToThread("string 6");
-    PushStringWorkToThread("string 7");
-    PushStringWorkToThread("string 8");
-    PushStringWorkToThread("string 9");
+    PushStringWorkToThread(semaphoreHandle, "string 0");
+    PushStringWorkToThread(semaphoreHandle,"string 1");
+    PushStringWorkToThread(semaphoreHandle,"string 2");
+    PushStringWorkToThread(semaphoreHandle,"string 3");
+    PushStringWorkToThread(semaphoreHandle,"string 4");
+    PushStringWorkToThread(semaphoreHandle,"string 5");
+    PushStringWorkToThread(semaphoreHandle,"string 6");
+    PushStringWorkToThread(semaphoreHandle,"string 7");
+    PushStringWorkToThread(semaphoreHandle,"string 8");
+    PushStringWorkToThread(semaphoreHandle,"string 9");
+
+    while(nextEntryToDo <= entryCompletionCount);
 
 #endif
     //Because the frequency doesn't change, we can just compute here.

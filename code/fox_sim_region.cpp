@@ -769,7 +769,7 @@ MoveEntity(game_state *gameState, sim_region *simRegion, sim_entity *entity,
 
                                 sim_entity_collision_volume *testVolume = 
                                     testEntity->collision->volumes + testVolumeIndex;
-                            
+                                    
                                 // Resize wall based on the player
                                 // so we can treat the player as an area
                                 // TODO : Entities have heights?
@@ -777,6 +777,7 @@ MoveEntity(game_state *gameState, sim_region *simRegion, sim_entity *entity,
                                     V3(testVolume->dim.x + volume->dim.x,
                                         testVolume->dim.y + volume->dim.y,
                                         testVolume->dim.z + volume->dim.z);
+
                                 // Get the tile rectangle
                                 v3 minCorner = -0.5f*minkowskiDiameter;
                                 v3 maxCorner = 0.5f*minkowskiDiameter;
