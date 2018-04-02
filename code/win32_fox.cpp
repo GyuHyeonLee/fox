@@ -3,6 +3,8 @@ File:   win32_fox.cpp
 Author: GyuHyeon Lee
 Email:  email: weanother@gmail.com
 
+Github : https://git.digipen.edu/projects/jisendal
+
 Notice: (C) Copyright 2017 by GyuHyeon, Lee. All Rights Reserved. $
 ******************************************************************************/
 /*****
@@ -264,10 +266,10 @@ DEBUG_PLATFORM_WRTIE_ENTIRE_FILE(DEBUGPlatformWriteEntireFile)
         DWORD bytesWritten;
         if(WriteFile(fileHandle, memory, memorySize, &bytesWritten, 0))
         {
-         result = (bytesWritten == memorySize); 
-     }
-     else
-     {
+           result = (bytesWritten == memorySize); 
+       }
+       else
+       {
         }//if(WriteFile)
         
         CloseHandle(fileHandle);
@@ -839,10 +841,10 @@ ToggleFullSceen(HWND window)
                         and big as the monitor to make the fullscreen
             */
             SetWindowPos(window, HWND_TOP,
-               monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
-               monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
-               monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
-               SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+             monitorInfo.rcMonitor.left, monitorInfo.rcMonitor.top,
+             monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+             monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
+             SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
         }
     }
     else
@@ -850,8 +852,8 @@ ToggleFullSceen(HWND window)
         SetWindowLong(window, GWL_STYLE, style | WS_OVERLAPPEDWINDOW);
         SetWindowPlacement(window, &globalWindowPosition);
         SetWindowPos(window, 0, 0, 0, 0, 0,
-           SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
-           SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+         SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+         SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
     }
 }
 
@@ -1035,62 +1037,108 @@ HandleDebugCycleCounter(game_memory *gameMemory)
 #endif
 }
 
-#define CompletePastWritesBeforeFutureWrites _WriteBarrier(); _mm_sfence() 
-#define CompletePastReadsBeforeFutureReads _ReadBarrier()
-
-struct work_queue_entry
+struct work_queue_entry_storage
 {
-    char *stringToPrint;
+    void *userPointer;
 };
 
-global_variable uint32 volatile entryCompletionCount;
-global_variable uint32 volatile nextEntryToDo;
-global_variable uint32 volatile entryCount;
-work_queue_entry entries[256];
+// Get on it!!(To the work_queue)
+struct work_queue_entry
+{
+    void *data;
+    bool32 isCompleted;
+};
+
+// Contains all the work that needed to be done.
+struct work_queue
+{
+    uint32 volatile entryCompletionCount;
+    uint32 volatile nextEntryToDo;
+    uint32 volatile entryCount;
+    work_queue_entry_storage entries[256];
+
+    HANDLE semaphoreHandle;
+};
 
 internal void
-PushStringWorkToThread(HANDLE semaphoreHandle, char *string)
+AddWorkToQueue(work_queue *queue, void *pointer)
 {
-    work_queue_entry *entry = entries + entryCount;
-    entry->stringToPrint = string;
+    queue->entries[queue->entryCount].userPointer = pointer;
 
-    CompletePastWritesBeforeFutureWrites;
+    _WriteBarrier();
+    _mm_sfence();
 
-    entryCount++;
+    // This will notice the threads that there are more works, 
+    // so make sure to setup the writebarrier.
+    // so that the threads will get the right data of works
+    queue->entryCount++;
 
-    // Try to wake up the threads by incrementing the count by 1
-    ReleaseSemaphore(semaphoreHandle, 1, NULL);
+    // NOTE : Wake up the threads by incrementing the count by 1
+    ReleaseSemaphore(queue->semaphoreHandle, 1, NULL);
+}
+
+internal work_queue_entry
+CompleteAndGetNextWorkQueueEntry(work_queue *queue, work_queue_entry completed)
+{
+    work_queue_entry result;
+    result.isCompleted = false;
+
+    if(completed.isCompleted)
+    {
+        InterlockedIncrement((LONG volatile *)&queue->entryCompletionCount);
+    }
+
+    if(queue->nextEntryToDo < queue->entryCount)
+    {
+        // What if the other thread is already inside here?
+        int entryIndex = InterlockedIncrement((LONG volatile *)&queue->nextEntryToDo) - 1;
+        result.data = queue->entries[entryIndex].userPointer;
+        _ReadBarrier();
+        result.isCompleted = true;
+
+    }
+
+    return result;
+}
+
+internal bool32
+QueueWorkStillInProgress(work_queue *queue)
+{
+    // If the entr
+    bool32 result = queue->entryCompletionCount != queue->entryCount;
+    return result;
+}
+
+internal void
+DoWorkInsideEntry(work_queue_entry *entry, int32 logicalThreadIndex)
+{
+    char buffer[256];
+    wsprintf(buffer, "thread : %u, %s\n", logicalThreadIndex, (char *)entry->data);
+    OutputDebugStringA(buffer);
 }
 
 struct win32_thread_info
 {
-    HANDLE semaphoreHandle;
     int logicalThreadIndex;
+    work_queue *queue;
 };
-
 DWORD WINAPI 
 ThreadProc(LPVOID lpParameter)
 {
-    win32_thread_info *info = (win32_thread_info *)lpParameter;  
+    win32_thread_info *threadInfo = (win32_thread_info *)lpParameter;  
 
+    work_queue_entry entry = {};
     for(;;)
     {
-        if(nextEntryToDo < entryCount)
+        entry = CompleteAndGetNextWorkQueueEntry(threadInfo->queue, entry);
+        if(entry.isCompleted)
         {
-            int entryIndex = InterlockedIncrement((LONG volatile *)&nextEntryToDo) - 1;
-            CompletePastReadsBeforeFutureReads;
-            work_queue_entry *entry = entries + entryIndex;
-
-            char buffer[256];
-            wsprintf(buffer, "thread : %u, %s\n", info->logicalThreadIndex, entry->stringToPrint);
-            OutputDebugStringA(buffer);
-
-            InterlockedIncrement((LONG volatile *)&entryCompletionCount);
+            DoWorkInsideEntry(&entry, threadInfo->logicalThreadIndex);
         }
         else
         {
             // Whenever the thread wakes up, it will decrement the semaphore by 1
-            WaitForSingleObjectEx(info->semaphoreHandle, INFINITE, false);
+            WaitForSingleObjectEx(threadInfo->queue->semaphoreHandle, INFINITE, false);
         }
     }
 
@@ -1104,10 +1152,16 @@ WinMain(HINSTANCE hInstance,
     int nCmdShow)
 {
     #if 1
-    win32_thread_info threadInfos[8] = {};
+    win32_thread_info threadInfos[7] = {};
+
+    work_queue queue = {};
+
+    uint32 initialCount = 0;
     uint32 threadCount = ArrayCount(threadInfos);
 
-    HANDLE semaphoreHandle = CreateSemaphoreEx(0, 0, threadCount, 0, 0, SEMAPHORE_ALL_ACCESS); 
+    queue.semaphoreHandle = CreateSemaphoreEx(0, initialCount, 
+                                                threadCount, 
+                                                0, 0, SEMAPHORE_ALL_ACCESS); 
 
     for(uint32 threadIndex = 0;
         threadIndex < threadCount;
@@ -1115,7 +1169,7 @@ WinMain(HINSTANCE hInstance,
     {
         win32_thread_info *info = threadInfos + threadIndex;
         info->logicalThreadIndex = threadIndex;
-        info->semaphoreHandle = semaphoreHandle;
+        info->queue = &queue;
 
         // Just a placeholder
         DWORD threadID;
@@ -1126,18 +1180,28 @@ WinMain(HINSTANCE hInstance,
     }
 
     // Push string so that the threads have work to do.
-    PushStringWorkToThread(semaphoreHandle, "string 0");
-    PushStringWorkToThread(semaphoreHandle,"string 1");
-    PushStringWorkToThread(semaphoreHandle,"string 2");
-    PushStringWorkToThread(semaphoreHandle,"string 3");
-    PushStringWorkToThread(semaphoreHandle,"string 4");
-    PushStringWorkToThread(semaphoreHandle,"string 5");
-    PushStringWorkToThread(semaphoreHandle,"string 6");
-    PushStringWorkToThread(semaphoreHandle,"string 7");
-    PushStringWorkToThread(semaphoreHandle,"string 8");
-    PushStringWorkToThread(semaphoreHandle,"string 9");
+    AddWorkToQueue(&queue, "string 0");
+    AddWorkToQueue(&queue, "string 1");
+    AddWorkToQueue(&queue, "string 2");
+    AddWorkToQueue(&queue, "string 3");
+    AddWorkToQueue(&queue, "string 4");
+    AddWorkToQueue(&queue, "string 5");
+    AddWorkToQueue(&queue, "string 6");
+    AddWorkToQueue(&queue, "string 7");
+    AddWorkToQueue(&queue, "string 8");
+    AddWorkToQueue(&queue, "string 9");
 
-    while(nextEntryToDo <= entryCompletionCount);
+    // This is for the main thread
+    work_queue_entry entry = {};
+
+    while(QueueWorkStillInProgress(&queue))
+    {
+        entry = CompleteAndGetNextWorkQueueEntry(&queue, entry);
+        if(entry.isCompleted)
+        {
+            DoWorkInsideEntry(&entry, 7);
+        }
+    }
 
 #endif
     //Because the frequency doesn't change, we can just compute here.

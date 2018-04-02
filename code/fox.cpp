@@ -220,6 +220,7 @@ DEBUGAllocateAndLoadBitmap(memory_arena *arena, thread_context *thread,
    return result;
 }
 
+// TODO : Make this to be multithreaded!
 internal void
 LoadAsset(game_assets *assets, game_asset_id id)
 {
